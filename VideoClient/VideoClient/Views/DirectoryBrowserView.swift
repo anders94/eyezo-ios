@@ -93,12 +93,21 @@ struct DirectoryBrowserView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.serverUnreachable {
+                    HStack(spacing: 16) {
+                        if viewModel.serverUnreachable {
+                            Button(action: {
+                                showingServerSetup = true
+                            }) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(.red)
+                            }
+                        }
+
                         Button(action: {
                             showingServerSetup = true
                         }) {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(.red)
+                            Image(systemName: "gear")
+                                .foregroundColor(.blue)
                         }
                     }
                 }

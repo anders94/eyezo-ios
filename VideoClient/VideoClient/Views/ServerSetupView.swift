@@ -80,7 +80,10 @@ struct ServerSetupView: View {
         }
         .navigationViewStyle(.stack)
         .onAppear {
-            // Leave empty - user should enter their Mac's IP address for simulator
+            // Pre-populate with current server URL if available
+            if urlInput.isEmpty, let currentURL = serverURLManager.serverURL {
+                urlInput = currentURL.absoluteString
+            }
         }
     }
 

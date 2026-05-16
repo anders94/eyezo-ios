@@ -1,6 +1,6 @@
 # Video Browser - iOS Client
 
-A lightweight iOS app for browsing and playing videos from the video-server API.
+A lightweight iOS app for browsing and playing videos from [video-server](https://github.com/anders94/video-server).
 
 ## Features
 

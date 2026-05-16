@@ -1,71 +1,34 @@
 import SwiftUI
 import AVKit
+import AVFoundation
 
-struct VideoPlayerView: View {
+struct VideoPlayerView: UIViewControllerRepresentable {
     let video: VideoItem
     let serverURL: URL?
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var player: AVPlayer?
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        // Configure audio session
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        try? AVAudioSession.sharedInstance().setActive(true)
 
-    var body: some View {
-        ZStack {
-            if let player = player {
-                VideoPlayer(player: player)
-                    .edgesIgnoringSafeArea(.all)
-            } else {
-                VStack(spacing: 20) {
-                    ProgressView()
-                    Text("Loading video...")
-                        .foregroundColor(.white)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black)
-                .edgesIgnoringSafeArea(.all)
-            }
+        let controller = AVPlayerViewController()
 
-            // Dismiss button in top-left corner
-            VStack {
-                HStack {
-                    Button(action: {
-                        player?.pause()
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(12)
-                            .background(Color.black.opacity(0.6))
-                            .clipShape(Circle())
-                    }
-                    .padding()
-
-                    Spacer()
-                }
-
-                Spacer()
-            }
-        }
-        .onAppear {
-            setupPlayer()
-        }
-        .onDisappear {
-            player?.pause()
-            player = nil
-        }
-    }
-
-    private func setupPlayer() {
-        guard let serverURL = serverURL else { return }
+        guard let serverURL = serverURL else { return controller }
 
         let apiService = APIService()
         let videoURL = apiService.getVideoURL(serverURL: serverURL, videoPath: video.urlPath)
 
         let player = AVPlayer(url: videoURL)
-        self.player = player
+        controller.player = player
 
         // Auto-play
         player.play()
+
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        // No updates needed
     }
 }
 

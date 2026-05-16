@@ -103,8 +103,9 @@ struct DirectoryBrowserView: View {
                     }
                 }
             }
-            .sheet(item: $selectedVideo) { video in
+            .fullScreenCover(item: $selectedVideo) { video in
                 VideoPlayerView(video: video, serverURL: serverURLManager.serverURL)
+                    .ignoresSafeArea()
             }
             .fullScreenCover(isPresented: $showingServerSetup) {
                 ServerSetupView()

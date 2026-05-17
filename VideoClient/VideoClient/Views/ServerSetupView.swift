@@ -80,9 +80,13 @@ struct ServerSetupView: View {
         }
         .navigationViewStyle(.stack)
         .onAppear {
-            // Pre-populate with current server URL if available
-            if urlInput.isEmpty, let currentURL = serverURLManager.serverURL {
-                urlInput = currentURL.absoluteString
+            // Pre-populate with current server URL if available, otherwise start with http://
+            if urlInput.isEmpty {
+                if let currentURL = serverURLManager.serverURL {
+                    urlInput = currentURL.absoluteString
+                } else {
+                    urlInput = "http://"
+                }
             }
         }
     }

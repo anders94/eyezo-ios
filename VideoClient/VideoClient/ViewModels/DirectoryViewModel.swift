@@ -21,9 +21,10 @@ class DirectoryViewModel: ObservableObject {
             return
         }
 
-        isLoading = true
+        // Clear all error state before starting
         errorMessage = nil
         serverUnreachable = false
+        isLoading = true
 
         do {
             let response = try await apiService.browse(serverURL: serverURL, path: path)

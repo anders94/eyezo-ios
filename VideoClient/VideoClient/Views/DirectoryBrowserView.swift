@@ -129,7 +129,14 @@ struct DirectoryBrowserView: View {
                     }
                 }
             }
-            .fullScreenCover(item: $selectedVideo) { video in
+            .fullScreenCover(item: $selectedVideo, onDismiss: {
+                // Refresh to show updated watch progress
+                // Small delay to let server process the final progress update
+                Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    await viewModel.refresh()
+                }
+            }) { video in
                 VideoPlayerView(video: video, serverURL: serverURLManager.serverURL)
                     .ignoresSafeArea()
             }

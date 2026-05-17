@@ -26,6 +26,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         coordinator.serverURL = serverURL
         coordinator.videoPath = video.urlPath
         coordinator.player = player
+        coordinator.controller = controller
 
         // Resume from last position if available
         if let duration = video.duration, let watchPosition = video.watchPosition,
@@ -47,6 +48,10 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         return controller
     }
 
+    static func dismantleUIViewController(_ uiViewController: AVPlayerViewController, coordinator: Coordinator) {
+        coordinator.cleanup()
+    }
+
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         // No updates needed
     }
@@ -59,7 +64,9 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         var serverURL: URL?
         var videoPath: String?
         var player: AVPlayer?
+        var controller: AVPlayerViewController?
         var timeObserver: Any?
+        private var hasCleanedUp = false
 
         func reportProgress(position: Double) {
             guard let serverURL = serverURL, let videoPath = videoPath else { return }
@@ -68,8 +75,15 @@ struct VideoPlayerView: UIViewControllerRepresentable {
             apiService.reportWatchProgress(serverURL: serverURL, videoPath: videoPath, position: position)
         }
 
-        deinit {
-            // Report final position when player is dismissed
+        func cleanup() {
+            guard !hasCleanedUp else { return }
+
+            hasCleanedUp = true
+
+            // Pause the player immediately
+            player?.pause()
+
+            // Report final position
             if let player = player {
                 let position = player.currentTime().seconds
                 reportProgress(position: position)
@@ -78,7 +92,17 @@ struct VideoPlayerView: UIViewControllerRepresentable {
             // Remove time observer
             if let timeObserver = timeObserver, let player = player {
                 player.removeTimeObserver(timeObserver)
+                self.timeObserver = nil
             }
+
+            // Clear player reference
+            controller?.player = nil
+            player = nil
+            controller = nil
+        }
+
+        deinit {
+            cleanup()
         }
     }
 }

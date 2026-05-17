@@ -186,47 +186,67 @@ struct VideoGridItem: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            // Thumbnail
-            if let thumbnailURL = thumbnailURL {
-                AsyncImage(url: thumbnailURL) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .aspectRatio(16/9, contentMode: .fit)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(12)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(maxWidth: .infinity)
-                            .aspectRatio(16/9, contentMode: .fit)
-                            .clipped()
-                            .cornerRadius(12)
-                    case .failure:
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.gray.opacity(0.2))
+            // Thumbnail with progress bar
+            ZStack(alignment: .bottom) {
+                if let thumbnailURL = thumbnailURL {
+                    AsyncImage(url: thumbnailURL) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
                                 .aspectRatio(16/9, contentMode: .fit)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(12)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(maxWidth: .infinity)
+                                .aspectRatio(16/9, contentMode: .fit)
+                                .clipped()
+                                .cornerRadius(12)
+                        case .failure:
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .aspectRatio(16/9, contentMode: .fit)
 
-                            Image(systemName: "film.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.gray)
+                                Image(systemName: "film.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.gray)
+                            }
+                        @unknown default:
+                            EmptyView()
                         }
-                    @unknown default:
-                        EmptyView()
+                    }
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.gray.opacity(0.2))
+                            .aspectRatio(16/9, contentMode: .fit)
+
+                        Image(systemName: "film.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.gray)
                     }
                 }
-            } else {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gray.opacity(0.2))
-                        .aspectRatio(16/9, contentMode: .fit)
 
-                    Image(systemName: "film.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.gray)
+                // Watch progress bar
+                if video.watchPercentage > 0 {
+                    GeometryReader { geometry in
+                        HStack(spacing: 0) {
+                            Rectangle()
+                                .fill(Color.red)
+                                .frame(width: geometry.size.width * (video.watchPercentage / 100))
+
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    .frame(height: 4)
+                    .background(Color.black.opacity(0.3))
+                    .cornerRadius(2)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
                 }
             }
 

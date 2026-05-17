@@ -6,8 +6,6 @@ struct DirectoryBrowserView: View {
     @State private var selectedVideo: VideoItem?
     @State private var showingServerSetup = false
 
-    let initialPath: String?
-
     private var displayTitle: String {
         guard let path = viewModel.currentPath else { return "Videos" }
         // Extract just the last component of the path for display
@@ -44,31 +42,33 @@ struct DirectoryBrowserView: View {
                         .buttonStyle(.borderedProminent)
                     }
                 } else {
-                    List {
-                        // Directories section
-                        if !viewModel.directories.isEmpty {
-                            Section {
-                                ForEach(viewModel.directories) { directory in
-                                    NavigationLink(destination: DirectoryBrowserView(initialPath: directory.urlPath)) {
-                                        DirectoryRow(directory: directory)
+                    ScrollView {
+                        LazyVGrid(columns: [
+                            GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)
+                        ], spacing: 16) {
+                            // Directories first
+                            ForEach(viewModel.directories) { directory in
+                                Button(action: {
+                                    Task {
+                                        await viewModel.loadDirectory(directory.urlPath)
                                     }
+                                }) {
+                                    DirectoryGridItem(directory: directory)
                                 }
+                                .buttonStyle(.plain)
                             }
-                        }
 
-                        // Videos section
-                        if !viewModel.videos.isEmpty {
-                            Section {
-                                ForEach(viewModel.videos) { video in
-                                    Button(action: {
-                                        selectedVideo = video
-                                    }) {
-                                        VideoRow(video: video, serverURL: serverURLManager.serverURL)
-                                    }
-                                    .buttonStyle(.plain)
+                            // Videos
+                            ForEach(viewModel.videos) { video in
+                                Button(action: {
+                                    selectedVideo = video
+                                }) {
+                                    VideoGridItem(video: video, serverURL: serverURLManager.serverURL)
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
+                        .padding()
 
                         // Empty state
                         if viewModel.directories.isEmpty && viewModel.videos.isEmpty && !viewModel.isLoading {
@@ -83,7 +83,6 @@ struct DirectoryBrowserView: View {
                             .padding(.vertical, 40)
                         }
                     }
-                    .listStyle(.insetGrouped)
                     .refreshable {
                         await viewModel.refresh()
                     }
@@ -91,7 +90,23 @@ struct DirectoryBrowserView: View {
             }
             .navigationTitle(displayTitle)
             .navigationBarTitleDisplayMode(.large)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if viewModel.parentPath != nil {
+                        Button(action: {
+                            Task {
+                                await viewModel.loadDirectory(viewModel.parentPath)
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Back")
+                            }
+                        }
+                    }
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 16) {
                         if viewModel.serverUnreachable {
@@ -122,38 +137,41 @@ struct DirectoryBrowserView: View {
         }
         .navigationViewStyle(.stack)
         .task {
-            await viewModel.loadDirectory(initialPath)
+            // Load root directory on first appearance
+            if viewModel.currentPath == nil && viewModel.directories.isEmpty && viewModel.videos.isEmpty {
+                await viewModel.loadDirectory(nil)
+            }
         }
-    }
-
-    init(initialPath: String? = nil) {
-        self.initialPath = initialPath
     }
 }
 
-struct DirectoryRow: View {
+struct DirectoryGridItem: View {
     let directory: DirectoryItem
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "folder.fill")
-                .font(.system(size: 40))
-                .foregroundColor(.blue)
-                .frame(width: 60, height: 60)
+        VStack(spacing: 8) {
+            // Folder icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.blue.opacity(0.1))
+                    .aspectRatio(1, contentMode: .fit)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(directory.name)
-                    .font(.body)
-                    .foregroundColor(.primary)
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.blue)
             }
 
-            Spacer()
+            // Directory name
+            Text(directory.name)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
         }
-        .padding(.vertical, 8)
     }
 }
 
-struct VideoRow: View {
+struct VideoGridItem: View {
     let video: VideoItem
     let serverURL: URL?
 
@@ -165,52 +183,63 @@ struct VideoRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
+        VStack(spacing: 8) {
             // Thumbnail
             if let thumbnailURL = thumbnailURL {
                 AsyncImage(url: thumbnailURL) { phase in
                     switch phase {
                     case .empty:
                         ProgressView()
-                            .frame(width: 60, height: 60)
+                            .frame(maxWidth: .infinity)
+                            .aspectRatio(16/9, contentMode: .fit)
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(12)
                     case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: 60, height: 60)
+                            .frame(maxWidth: .infinity)
+                            .aspectRatio(16/9, contentMode: .fit)
                             .clipped()
-                            .cornerRadius(8)
+                            .cornerRadius(12)
                     case .failure:
-                        Image(systemName: "film.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.gray)
-                            .frame(width: 60, height: 60)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.gray.opacity(0.2))
+                                .aspectRatio(16/9, contentMode: .fit)
+
+                            Image(systemName: "film.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.gray)
+                        }
                     @unknown default:
                         EmptyView()
                     }
                 }
             } else {
-                Image(systemName: "film.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(.gray)
-                    .frame(width: 60, height: 60)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.2))
+                        .aspectRatio(16/9, contentMode: .fit)
+
+                    Image(systemName: "film.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.gray)
+                }
             }
 
-            // Video info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(video.name)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
+            // Video name
+            Text(video.name)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
 
-                Text(video.formattedSize)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
+            // File size
+            Text(video.formattedSize)
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
     }
 }
 

@@ -6,6 +6,7 @@ class DirectoryViewModel: ObservableObject {
     @Published var directories: [DirectoryItem] = []
     @Published var videos: [VideoItem] = []
     @Published var currentPath: String?
+    @Published var parentPath: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var serverUnreachable = false
@@ -27,6 +28,7 @@ class DirectoryViewModel: ObservableObject {
         do {
             let response = try await apiService.browse(serverURL: serverURL, path: path)
             currentPath = path
+            parentPath = response.parent
 
             // Filter out hidden files (starting with ".")
             directories = response.directories.filter { !$0.name.hasPrefix(".") }
@@ -51,11 +53,5 @@ class DirectoryViewModel: ObservableObject {
 
     func refresh() async {
         await loadDirectory(currentPath)
-    }
-
-    func navigateToDirectory(_ directory: DirectoryItem) {
-        Task {
-            await loadDirectory(directory.urlPath)
-        }
     }
 }

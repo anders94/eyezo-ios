@@ -89,21 +89,10 @@ class APIService {
         return components.url
     }
 
-    func reportWatchProgress(serverURL: URL, videoPath: String, position: Double) async {
-        let url = serverURL.appendingPathComponent("api/watch-progress")
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body: [String: Any] = [
-            "path": videoPath,
-            "position": position
-        ]
-
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        // Fire and forget - don't wait for response or handle errors
-        _ = try? await URLSession.shared.data(for: request)
+    func reportWatchProgress(serverURL: URL, videoPath: String, position: Double) {
+        // Use the shared reporter to ensure only one request at a time
+        Task { @MainActor in
+            WatchProgressReporter.shared.reportProgress(serverURL: serverURL, videoPath: videoPath, position: position)
+        }
     }
 }

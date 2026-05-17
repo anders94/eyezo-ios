@@ -64,10 +64,8 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         func reportProgress(position: Double) {
             guard let serverURL = serverURL, let videoPath = videoPath else { return }
 
-            Task {
-                let apiService = APIService()
-                await apiService.reportWatchProgress(serverURL: serverURL, videoPath: videoPath, position: position)
-            }
+            let apiService = APIService()
+            apiService.reportWatchProgress(serverURL: serverURL, videoPath: videoPath, position: position)
         }
 
         deinit {

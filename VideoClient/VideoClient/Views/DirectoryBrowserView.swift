@@ -10,7 +10,9 @@ struct DirectoryBrowserView: View {
         guard let path = viewModel.currentPath else { return "Videos" }
         // Extract just the last component of the path for display
         let components = path.split(separator: "/")
-        return components.last.map(String.init) ?? "Videos"
+        let lastComponent = components.last.map(String.init) ?? "Videos"
+        // Decode URL encoding (e.g., %20 -> space)
+        return lastComponent.removingPercentEncoding ?? lastComponent
     }
 
     var body: some View {

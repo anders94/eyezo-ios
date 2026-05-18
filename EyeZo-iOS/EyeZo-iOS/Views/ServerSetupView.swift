@@ -17,7 +17,7 @@ struct ServerSetupView: View {
                         .font(.system(size: 80))
                         .foregroundColor(.blue)
 
-                    Text("Video Client")
+                    Text("EyeZo")
                         .font(.largeTitle)
                         .fontWeight(.bold)
 

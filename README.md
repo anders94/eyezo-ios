@@ -1,6 +1,6 @@
-# Video Browser - iOS Client
+# EyeZo - iOS Client
 
-A lightweight iOS app for browsing and playing videos from [video-server](https://github.com/anders94/video-server).
+A lightweight iOS app for browsing and playing videos from [eyezo-server](https://github.com/anders94/eyezo-server).
 
 ## Features
 
@@ -16,7 +16,7 @@ A lightweight iOS app for browsing and playing videos from [video-server](https:
 
 - macOS with Xcode 13.0 or later
 - iOS 15.0+ device or simulator
-- Running instance of video-server (default: http://127.0.0.1:3000)
+- Running instance of eyezo-server (default: http://127.0.0.1:3000)
 
 ## Setup Instructions
 
@@ -25,10 +25,10 @@ The Xcode project is already created with all source files in place.
 ### 1. Open the Project
 
 ```bash
-open VideoClient/VideoClient.xcodeproj
+open EyeZo/EyeZo.xcodeproj
 ```
 
-Or double-click `VideoClient.xcodeproj` in Finder.
+Or double-click `EyeZo.xcodeproj` in Finder.
 
 ### 2. Clean Up (if needed)
 
@@ -38,7 +38,7 @@ Delete any auto-generated files that may conflict:
 ### 3. Verify Settings
 
 1. Select the project in Project Navigator (top item)
-2. Select the **VideoClient** target
+2. Select the **EyeZo** target
 3. Go to **General** tab:
    - Verify **Minimum Deployments** is set to **iOS 15.0**
    - Ensure both **iPhone** and **iPad** are checked under Supported Destinations
@@ -49,14 +49,14 @@ Delete any auto-generated files that may conflict:
 2. Click the **Run** button (▶️) or press `Cmd+R`
 3. The app will build and launch
 
-**Note:** All source files are in `VideoClient/VideoClient/` - this is your working directory. Edit files directly in Xcode.
+**Note:** All source files are in `EyeZo/EyeZo/` - this is your working directory. Edit files directly in Xcode.
 
 ## Usage
 
 ### First Launch
 
 1. The app will display a server setup screen
-2. Enter your video-server URL:
+2. Enter your eyezo-server URL:
    - **For iOS Simulator**: Use your Mac's IP address (e.g., `http://10.20.1.13:3000`)
      - Find your IP: System Settings > Network > Wi-Fi/Ethernet > Details
    - **For Physical Device**: Use your Mac's IP address on the same network
@@ -88,16 +88,17 @@ Delete any auto-generated files that may conflict:
 ## Project Structure
 
 ```
-VideoClient/
-├── VideoClient/
-│   ├── VideoClientApp.swift          # App entry point
+EyeZo/
+├── EyeZo/
+│   ├── EyeZoApp.swift                # App entry point
 │   ├── Models/
 │   │   ├── BrowseResponse.swift      # API response models
 │   │   ├── VideoItem.swift           # Video metadata
 │   │   └── DirectoryItem.swift       # Directory metadata
 │   ├── Services/
 │   │   ├── APIService.swift          # Network layer
-│   │   └── ServerURLManager.swift    # URL persistence
+│   │   ├── ServerURLManager.swift    # URL persistence
+│   │   └── WatchProgressReporter.swift # Watch progress tracking
 │   ├── Views/
 │   │   ├── ServerSetupView.swift     # Server configuration
 │   │   ├── DirectoryBrowserView.swift # Directory listing
@@ -126,8 +127,8 @@ VideoClient/
 
 ### Runtime Issues
 
-- **Cannot connect to server**: Verify video-server is running at the configured URL
-- **Videos won't play**: Check that the video-server has proper file access permissions
+- **Cannot connect to server**: Verify eyezo-server is running at the configured URL
+- **Videos won't play**: Check that the eyezo-server has proper file access permissions
 - **Thumbnails not loading**: Thumbnails are generated on-demand; first load may be slow
 - **HTTP not allowed**: Verify Info.plist includes `NSAppTransportSecurity` configuration
 
@@ -141,7 +142,7 @@ VideoClient/
 ## Testing Checklist
 
 - [ ] First launch shows server setup screen
-- [ ] Can connect to video-server successfully
+- [ ] Can connect to eyezo-server successfully
 - [ ] Directories appear with folder icons
 - [ ] Videos appear with thumbnails
 - [ ] Can navigate into subdirectories

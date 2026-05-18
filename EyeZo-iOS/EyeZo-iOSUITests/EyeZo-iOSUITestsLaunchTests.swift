@@ -1,13 +1,13 @@
 //
-//  VideoClientUITestsLaunchTests.swift
-//  VideoClientUITests
+//  EyeZoUITestsLaunchTests.swift
+//  EyeZoUITests
 //
 //  Created by Anders Brownworth on 5/16/26.
 //
 
 import XCTest
 
-final class VideoClientUITestsLaunchTests: XCTestCase {
+final class EyeZoUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

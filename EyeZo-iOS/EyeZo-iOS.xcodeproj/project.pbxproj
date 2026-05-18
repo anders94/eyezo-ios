@@ -12,50 +12,50 @@
 			containerPortal = 9A08DB492FB8ABA100F75A1F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9A08DB502FB8ABA100F75A1F;
-			remoteInfo = VideoClient;
+			remoteInfo = EyeZo;
 		};
 		9A08DB692FB8ABA300F75A1F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9A08DB492FB8ABA100F75A1F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9A08DB502FB8ABA100F75A1F;
-			remoteInfo = VideoClient;
+			remoteInfo = EyeZo;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		9A08DB512FB8ABA100F75A1F /* VideoClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		9A08DB5E2FB8ABA300F75A1F /* VideoClientTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VideoClientTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		9A08DB682FB8ABA300F75A1F /* VideoClientUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VideoClientUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A08DB512FB8ABA100F75A1F /* EyeZo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EyeZo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A08DB5E2FB8ABA300F75A1F /* EyeZoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EyeZoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A08DB682FB8ABA300F75A1F /* EyeZoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EyeZoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9A08DB952FB8AE3700F75A1F /* Exceptions for "VideoClient" folder in "VideoClient" target */ = {
+		9A1319342FBB5747009FE8B5 /* Exceptions for "EyeZo-iOS" folder in "EyeZo" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 9A08DB502FB8ABA100F75A1F /* VideoClient */;
+			target = 9A08DB502FB8ABA100F75A1F /* EyeZo */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9A08DB532FB8ABA100F75A1F /* VideoClient */ = {
+		9A08DB532FB8ABA100F75A1F /* EyeZo-iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				9A08DB952FB8AE3700F75A1F /* Exceptions for "VideoClient" folder in "VideoClient" target */,
+				9A1319342FBB5747009FE8B5 /* Exceptions for "EyeZo-iOS" folder in "EyeZo" target */,
 			);
-			path = VideoClient;
+			path = "EyeZo-iOS";
 			sourceTree = "<group>";
 		};
-		9A08DB612FB8ABA300F75A1F /* VideoClientTests */ = {
+		9A08DB612FB8ABA300F75A1F /* EyeZo-iOSTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = VideoClientTests;
+			path = "EyeZo-iOSTests";
 			sourceTree = "<group>";
 		};
-		9A08DB6B2FB8ABA300F75A1F /* VideoClientUITests */ = {
+		9A08DB6B2FB8ABA300F75A1F /* EyeZo-iOSUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = VideoClientUITests;
+			path = "EyeZo-iOSUITests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -88,9 +88,9 @@
 		9A08DB482FB8ABA100F75A1F = {
 			isa = PBXGroup;
 			children = (
-				9A08DB532FB8ABA100F75A1F /* VideoClient */,
-				9A08DB612FB8ABA300F75A1F /* VideoClientTests */,
-				9A08DB6B2FB8ABA300F75A1F /* VideoClientUITests */,
+				9A08DB532FB8ABA100F75A1F /* EyeZo-iOS */,
+				9A08DB612FB8ABA300F75A1F /* EyeZo-iOSTests */,
+				9A08DB6B2FB8ABA300F75A1F /* EyeZo-iOSUITests */,
 				9A08DB522FB8ABA100F75A1F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -98,9 +98,9 @@
 		9A08DB522FB8ABA100F75A1F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9A08DB512FB8ABA100F75A1F /* VideoClient.app */,
-				9A08DB5E2FB8ABA300F75A1F /* VideoClientTests.xctest */,
-				9A08DB682FB8ABA300F75A1F /* VideoClientUITests.xctest */,
+				9A08DB512FB8ABA100F75A1F /* EyeZo.app */,
+				9A08DB5E2FB8ABA300F75A1F /* EyeZoTests.xctest */,
+				9A08DB682FB8ABA300F75A1F /* EyeZoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,9 +108,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		9A08DB502FB8ABA100F75A1F /* VideoClient */ = {
+		9A08DB502FB8ABA100F75A1F /* EyeZo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9A08DB722FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "VideoClient" */;
+			buildConfigurationList = 9A08DB722FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "EyeZo" */;
 			buildPhases = (
 				9A08DB4D2FB8ABA100F75A1F /* Sources */,
 				9A08DB4E2FB8ABA100F75A1F /* Frameworks */,
@@ -121,18 +121,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				9A08DB532FB8ABA100F75A1F /* VideoClient */,
+				9A08DB532FB8ABA100F75A1F /* EyeZo-iOS */,
 			);
-			name = VideoClient;
+			name = EyeZo;
 			packageProductDependencies = (
 			);
-			productName = VideoClient;
-			productReference = 9A08DB512FB8ABA100F75A1F /* VideoClient.app */;
+			productName = EyeZo;
+			productReference = 9A08DB512FB8ABA100F75A1F /* EyeZo.app */;
 			productType = "com.apple.product-type.application";
 		};
-		9A08DB5D2FB8ABA300F75A1F /* VideoClientTests */ = {
+		9A08DB5D2FB8ABA300F75A1F /* EyeZoTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9A08DB752FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "VideoClientTests" */;
+			buildConfigurationList = 9A08DB752FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "EyeZoTests" */;
 			buildPhases = (
 				9A08DB5A2FB8ABA300F75A1F /* Sources */,
 				9A08DB5B2FB8ABA300F75A1F /* Frameworks */,
@@ -144,18 +144,18 @@
 				9A08DB602FB8ABA300F75A1F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				9A08DB612FB8ABA300F75A1F /* VideoClientTests */,
+				9A08DB612FB8ABA300F75A1F /* EyeZo-iOSTests */,
 			);
-			name = VideoClientTests;
+			name = EyeZoTests;
 			packageProductDependencies = (
 			);
-			productName = VideoClientTests;
-			productReference = 9A08DB5E2FB8ABA300F75A1F /* VideoClientTests.xctest */;
+			productName = EyeZoTests;
+			productReference = 9A08DB5E2FB8ABA300F75A1F /* EyeZoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		9A08DB672FB8ABA300F75A1F /* VideoClientUITests */ = {
+		9A08DB672FB8ABA300F75A1F /* EyeZoUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9A08DB782FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "VideoClientUITests" */;
+			buildConfigurationList = 9A08DB782FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "EyeZoUITests" */;
 			buildPhases = (
 				9A08DB642FB8ABA300F75A1F /* Sources */,
 				9A08DB652FB8ABA300F75A1F /* Frameworks */,
@@ -167,13 +167,13 @@
 				9A08DB6A2FB8ABA300F75A1F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				9A08DB6B2FB8ABA300F75A1F /* VideoClientUITests */,
+				9A08DB6B2FB8ABA300F75A1F /* EyeZo-iOSUITests */,
 			);
-			name = VideoClientUITests;
+			name = EyeZoUITests;
 			packageProductDependencies = (
 			);
-			productName = VideoClientUITests;
-			productReference = 9A08DB682FB8ABA300F75A1F /* VideoClientUITests.xctest */;
+			productName = EyeZoUITests;
+			productReference = 9A08DB682FB8ABA300F75A1F /* EyeZoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -199,7 +199,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 9A08DB4C2FB8ABA100F75A1F /* Build configuration list for PBXProject "VideoClient" */;
+			buildConfigurationList = 9A08DB4C2FB8ABA100F75A1F /* Build configuration list for PBXProject "EyeZo-iOS" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -213,9 +213,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9A08DB502FB8ABA100F75A1F /* VideoClient */,
-				9A08DB5D2FB8ABA300F75A1F /* VideoClientTests */,
-				9A08DB672FB8ABA300F75A1F /* VideoClientUITests */,
+				9A08DB502FB8ABA100F75A1F /* EyeZo */,
+				9A08DB5D2FB8ABA300F75A1F /* EyeZoTests */,
+				9A08DB672FB8ABA300F75A1F /* EyeZoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -271,12 +271,12 @@
 /* Begin PBXTargetDependency section */
 		9A08DB602FB8ABA300F75A1F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 9A08DB502FB8ABA100F75A1F /* VideoClient */;
+			target = 9A08DB502FB8ABA100F75A1F /* EyeZo */;
 			targetProxy = 9A08DB5F2FB8ABA300F75A1F /* PBXContainerItemProxy */;
 		};
 		9A08DB6A2FB8ABA300F75A1F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 9A08DB502FB8ABA100F75A1F /* VideoClient */;
+			target = 9A08DB502FB8ABA100F75A1F /* EyeZo */;
 			targetProxy = 9A08DB692FB8ABA300F75A1F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -413,7 +413,7 @@
 				DEVELOPMENT_TEAM = A36HZ8344B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = VideoClient/Info.plist;
+				INFOPLIST_FILE = "EyeZo-iOS/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -424,7 +424,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.VideoClient;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.andersbrownworth.EyeZo-iOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -446,7 +446,7 @@
 				DEVELOPMENT_TEAM = A36HZ8344B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = VideoClient/Info.plist;
+				INFOPLIST_FILE = "EyeZo-iOS/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -457,7 +457,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.VideoClient;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.andersbrownworth.EyeZo-iOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -479,7 +479,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.VideoClientTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.EyeZoTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -487,7 +487,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VideoClient.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VideoClient";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EyeZo.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EyeZo";
 			};
 			name = Debug;
 		};
@@ -501,7 +501,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.VideoClientTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.EyeZoTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -509,7 +509,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VideoClient.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VideoClient";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EyeZo.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EyeZo";
 			};
 			name = Release;
 		};
@@ -521,7 +521,7 @@
 				DEVELOPMENT_TEAM = A36HZ8344B;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.VideoClientUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.EyeZoUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -529,7 +529,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = VideoClient;
+				TEST_TARGET_NAME = EyeZo;
 			};
 			name = Debug;
 		};
@@ -541,7 +541,7 @@
 				DEVELOPMENT_TEAM = A36HZ8344B;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.VideoClientUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.andersbrownworth.EyeZoUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -549,14 +549,14 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = VideoClient;
+				TEST_TARGET_NAME = EyeZo;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9A08DB4C2FB8ABA100F75A1F /* Build configuration list for PBXProject "VideoClient" */ = {
+		9A08DB4C2FB8ABA100F75A1F /* Build configuration list for PBXProject "EyeZo-iOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A08DB702FB8ABA300F75A1F /* Debug */,
@@ -565,7 +565,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9A08DB722FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "VideoClient" */ = {
+		9A08DB722FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "EyeZo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A08DB732FB8ABA300F75A1F /* Debug */,
@@ -574,7 +574,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9A08DB752FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "VideoClientTests" */ = {
+		9A08DB752FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "EyeZoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A08DB762FB8ABA300F75A1F /* Debug */,
@@ -583,7 +583,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9A08DB782FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "VideoClientUITests" */ = {
+		9A08DB782FB8ABA300F75A1F /* Build configuration list for PBXNativeTarget "EyeZoUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A08DB792FB8ABA300F75A1F /* Debug */,

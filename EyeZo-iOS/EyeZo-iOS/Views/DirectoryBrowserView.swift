@@ -7,11 +7,24 @@ struct DirectoryBrowserView: View {
     @State private var showingServerSetup = false
 
     private var displayTitle: String {
-        guard let path = viewModel.currentPath else { return "Videos" }
+        guard let path = viewModel.currentPath else { return "EyeZo" }
         // Extract just the last component of the path for display
         let components = path.split(separator: "/")
-        let lastComponent = components.last.map(String.init) ?? "Videos"
+        let lastComponent = components.last.map(String.init) ?? "EyeZo"
         // Decode URL encoding (e.g., %20 -> space)
+        return lastComponent.removingPercentEncoding ?? lastComponent
+    }
+
+    private var parentDisplayName: String {
+        guard let parentPath = viewModel.parentPath else { return "EyeZo" }
+        // If parent is root (empty or "/"), show "EyeZo"
+        if parentPath.isEmpty || parentPath == "/" {
+            return "EyeZo"
+        }
+        // Extract the last component of the parent path
+        let components = parentPath.split(separator: "/")
+        let lastComponent = components.last.map(String.init) ?? "EyeZo"
+        // Decode URL encoding
         return lastComponent.removingPercentEncoding ?? lastComponent
     }
 
@@ -103,7 +116,7 @@ struct DirectoryBrowserView: View {
                         }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "chevron.left")
-                                Text("Back")
+                                Text(parentDisplayName)
                             }
                         }
                     }

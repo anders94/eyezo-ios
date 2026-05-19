@@ -8,14 +8,25 @@ struct ServerSetupView: View {
     @State private var isConfigured = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 30) {
                 Spacer()
 
                 VStack(spacing: 16) {
-                    Image(systemName: "play.rectangle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.blue)
+                    // App icon/logo - add an image named "logo" to Assets.xcassets
+                    // If you haven't added it yet, you'll see a placeholder
+                    if let _ = UIImage(named: "logo") {
+                        Image("logo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 120, height: 120)
+                            .cornerRadius(20)
+                    } else {
+                        // Fallback icon if logo not added yet
+                        Image(systemName: "eye.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.blue)
+                    }
 
                     Text("EyeZo")
                         .font(.largeTitle)
@@ -33,7 +44,7 @@ struct ServerSetupView: View {
                         .disableAutocorrection(true)
                         .keyboardType(.URL)
                         .padding(.horizontal, 40)
-                        .onChange(of: urlInput) { _ in
+                        .onChange(of: urlInput) {
                             errorMessage = nil
                         }
 
@@ -68,17 +79,12 @@ struct ServerSetupView: View {
                 }
 
                 Spacer()
-
-                NavigationLink(
-                    destination: DirectoryBrowserView(),
-                    isActive: $isConfigured
-                ) {
-                    EmptyView()
-                }
+            }
+            .navigationDestination(isPresented: $isConfigured) {
+                DirectoryBrowserView()
             }
             .navigationBarHidden(true)
         }
-        .navigationViewStyle(.stack)
         .onAppear {
             // Pre-populate with current server URL if available, otherwise start with http://
             if urlInput.isEmpty {

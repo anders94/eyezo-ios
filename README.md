@@ -170,4 +170,4 @@ Native iOS patterns:
 
 ## License
 
-MIT
+MIT License - See [LICENSE](LICENSE) file for details.

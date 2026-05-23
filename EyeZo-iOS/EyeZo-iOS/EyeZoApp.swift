@@ -27,15 +27,16 @@ struct EyeZoApp: App {
             .task {
                 await checkServerStatus()
             }
-            .onChange(of: serverURLManager.serverURL) {
+            .onChange(of: serverURLManager.serverURL) { _, _ in
                 // Re-check server status when URL changes (e.g., after user configures it)
-                Task {
+                Task { @MainActor in
                     await checkServerStatus()
                 }
             }
         }
     }
 
+    @MainActor
     private func checkServerStatus() async {
         // Check if we have a saved server URL
         guard let serverURL = serverURLManager.serverURL else {
@@ -47,9 +48,7 @@ struct EyeZoApp: App {
         // Validate the server is reachable
         let isValid = await serverURLManager.validateServerURL(serverURL)
 
-        await MainActor.run {
-            isCheckingServer = false
-            serverIsValid = isValid
-        }
+        isCheckingServer = false
+        serverIsValid = isValid
     }
 }

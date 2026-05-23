@@ -209,7 +209,7 @@ struct VideoGridItem: View {
             // Thumbnail with progress bar
             ZStack(alignment: .bottom) {
                 if let thumbnailURL = thumbnailURL {
-                    AsyncImage(url: thumbnailURL) { phase in
+                    CachedAsyncImageWithPhase(url: thumbnailURL) { phase in
                         switch phase {
                         case .empty:
                             ProgressView()
@@ -235,8 +235,6 @@ struct VideoGridItem: View {
                                     .font(.system(size: 40))
                                     .foregroundColor(.gray)
                             }
-                        @unknown default:
-                            EmptyView()
                         }
                     }
                 } else {

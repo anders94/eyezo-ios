@@ -27,6 +27,12 @@ struct EyeZoApp: App {
             .task {
                 await checkServerStatus()
             }
+            .onChange(of: serverURLManager.serverURL) {
+                // Re-check server status when URL changes (e.g., after user configures it)
+                Task {
+                    await checkServerStatus()
+                }
+            }
         }
     }
 

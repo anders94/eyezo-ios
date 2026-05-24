@@ -125,23 +125,35 @@ class DownloadManager: NSObject, ObservableObject {
     }
 
     func deleteDownloadedVideo(_ downloadedVideo: DownloadedVideo) {
-        // Delete video file
-        let videoURL = URL(fileURLWithPath: downloadedVideo.localFilePath)
+        // Extract data before deletion (to avoid using deleted object)
+        let localFilePath = downloadedVideo.localFilePath
+        let thumbnailPath = downloadedVideo.thumbnailPath
+        let urlPath = downloadedVideo.urlPath
+
+        // Delete from CoreData first
+        let context = coreDataManager.viewContext
+        context.delete(downloadedVideo)
+
+        do {
+            // Save context to commit the deletion
+            try context.save()
+        } catch {
+            print("Error deleting video from CoreData: \(error)")
+            return
+        }
+
+        // Now delete files from disk
+        let videoURL = URL(fileURLWithPath: localFilePath)
         try? fileManager.removeItem(at: videoURL)
 
         // Delete thumbnail if exists
-        if let thumbnailPath = downloadedVideo.thumbnailPath {
+        if let thumbnailPath = thumbnailPath {
             let thumbnailURL = URL(fileURLWithPath: thumbnailPath)
             try? fileManager.removeItem(at: thumbnailURL)
         }
 
-        // Delete from CoreData
-        let context = coreDataManager.viewContext
-        context.delete(downloadedVideo)
-        coreDataManager.saveContext()
-
         // Update state
-        downloadStates[downloadedVideo.urlPath] = .none
+        downloadStates[urlPath] = .none
     }
 
     func isVideoDownloaded(urlPath: String) -> Bool {
@@ -315,17 +327,29 @@ class DownloadManager: NSObject, ObservableObject {
 
     private func downloadThumbnail(for video: VideoItem, serverURL: URL) async -> String? {
         guard let thumbnailURL = apiService.getThumbnailURL(serverURL: serverURL, videoPath: video.urlPath) else {
+            print("⚠️ Thumbnail download failed for '\(video.name)': No thumbnail URL available")
             return nil
         }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: thumbnailURL)
+            let (data, response) = try await URLSession.shared.data(from: thumbnailURL)
+
+            // Check HTTP response
+            if let httpResponse = response as? HTTPURLResponse {
+                guard httpResponse.statusCode == 200 else {
+                    print("⚠️ Thumbnail download failed for '\(video.name)': HTTP \(httpResponse.statusCode)")
+                    return nil
+                }
+            }
+
             guard let image = UIImage(data: data) else {
+                print("⚠️ Thumbnail download failed for '\(video.name)': Could not create image from data (size: \(data.count) bytes)")
                 return nil
             }
 
             // Compress image
             guard let jpegData = image.jpegData(compressionQuality: 0.7) else {
+                print("⚠️ Thumbnail download failed for '\(video.name)': Could not compress image to JPEG")
                 return nil
             }
 
@@ -334,10 +358,63 @@ class DownloadManager: NSObject, ObservableObject {
             let thumbnailPath = thumbnailsDirectory.appendingPathComponent("\(uuid).jpg")
 
             try jpegData.write(to: thumbnailPath)
+            print("✅ Thumbnail downloaded successfully for '\(video.name)' (saved to: \(thumbnailPath.lastPathComponent))")
             return thumbnailPath.path
         } catch {
+            print("⚠️ Thumbnail download failed for '\(video.name)': \(error.localizedDescription)")
             return nil
         }
+    }
+
+    // Public method to retry downloading thumbnail for an existing video
+    func retryThumbnailDownload(for downloadedVideo: DownloadedVideo) async {
+        // Reconstruct server URL and video info
+        guard let serverURL = URL(string: downloadedVideo.serverURL) else {
+            print("⚠️ Cannot retry thumbnail: Invalid server URL")
+            return
+        }
+
+        // Create a temporary VideoItem to pass to downloadThumbnail
+        let tempVideoItem = VideoItem(
+            name: downloadedVideo.videoName,
+            path: downloadedVideo.originalPath,
+            relativePath: downloadedVideo.originalPath,
+            urlPath: downloadedVideo.urlPath,
+            size: downloadedVideo.fileSize,
+            modified: downloadedVideo.downloadedDate.timeIntervalSince1970,
+            extension: downloadedVideo.fileExtension,
+            mimeType: downloadedVideo.mimeType,
+            thumbnailUrl: nil,
+            duration: downloadedVideo.duration,
+            watchPosition: nil,
+            lastWatched: nil
+        )
+
+        print("🔄 Retrying thumbnail download for '\(downloadedVideo.videoName)'...")
+
+        if let thumbnailPath = await downloadThumbnail(for: tempVideoItem, serverURL: serverURL) {
+            // Update CoreData with new thumbnail path
+            let context = coreDataManager.viewContext
+            downloadedVideo.thumbnailPath = thumbnailPath
+            coreDataManager.saveContext()
+            print("✅ Thumbnail retry successful for '\(downloadedVideo.videoName)'")
+        } else {
+            print("❌ Thumbnail retry failed for '\(downloadedVideo.videoName)'")
+        }
+    }
+
+    // Batch retry for all videos missing thumbnails
+    func retryMissingThumbnails() async {
+        let videos = getAllDownloadedVideos()
+        let videosWithoutThumbnails = videos.filter { $0.thumbnailPath == nil }
+
+        print("🔄 Found \(videosWithoutThumbnails.count) videos without thumbnails. Starting batch retry...")
+
+        for video in videosWithoutThumbnails {
+            await retryThumbnailDownload(for: video)
+        }
+
+        print("✅ Batch thumbnail retry complete")
     }
 
     private func saveToDatabase(_ item: DownloadItem, localURL: URL, thumbnailPath: String?) {

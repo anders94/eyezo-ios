@@ -1,7 +1,19 @@
 import SwiftUI
 
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        // Store completion handler for when downloads finish in background
+        DownloadManager.shared.backgroundCompletionHandler = completionHandler
+    }
+}
+
 @main
 struct EyeZoApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var serverURLManager = ServerURLManager.shared
     @State private var isCheckingServer = true
     @State private var serverIsValid = false
@@ -17,8 +29,18 @@ struct EyeZoApp: App {
                             .foregroundColor(.secondary)
                     }
                 } else if serverIsValid {
-                    // Server is configured and reachable
-                    DirectoryBrowserView()
+                    // Server is configured and reachable - show tabbed interface
+                    TabView {
+                        DirectoryBrowserView()
+                            .tabItem {
+                                Label("Browse", systemImage: "film.stack")
+                            }
+
+                        DownloadsView()
+                            .tabItem {
+                                Label("Downloads", systemImage: "arrow.down.circle.fill")
+                            }
+                    }
                 } else {
                     // Need to configure server or server is unreachable
                     ServerSetupView()

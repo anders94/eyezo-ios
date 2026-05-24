@@ -3,8 +3,14 @@ import SwiftUI
 struct DirectoryBrowserView: View {
     @StateObject private var viewModel = DirectoryViewModel()
     @StateObject private var serverURLManager = ServerURLManager.shared
+    @StateObject private var downloadManager = DownloadManager.shared
     @State private var selectedVideo: VideoItem?
     @State private var showingServerSetup = false
+    @State private var videoToDownload: VideoItem?
+    @State private var showDownloadAlert = false
+    @State private var showAlreadyDownloadedAlert = false
+    @State private var showCancelDownloadAlert = false
+    @State private var videoToCancel: VideoItem?
 
     private var displayTitle: String {
         guard let path = viewModel.currentPath else { return "EyeZo" }
@@ -75,12 +81,13 @@ struct DirectoryBrowserView: View {
 
                             // Videos
                             ForEach(viewModel.videos) { video in
-                                Button(action: {
-                                    selectedVideo = video
-                                }) {
-                                    VideoGridItem(video: video, serverURL: serverURLManager.serverURL)
-                                }
-                                .buttonStyle(.plain)
+                                VideoGridItem(video: video, serverURL: serverURLManager.serverURL)
+                                    .onTapGesture {
+                                        selectedVideo = video
+                                    }
+                                    .onLongPressGesture {
+                                        handleVideoLongPress(video: video)
+                                    }
                             }
                         }
                         .padding()
@@ -156,6 +163,35 @@ struct DirectoryBrowserView: View {
             .fullScreenCover(isPresented: $showingServerSetup) {
                 ServerSetupView()
             }
+            .alert("Download Video", isPresented: $showDownloadAlert, presenting: videoToDownload) { video in
+                Button("Cancel", role: .cancel) {
+                    videoToDownload = nil
+                }
+                Button("Download") {
+                    if let serverURL = serverURLManager.serverURL {
+                        downloadManager.addToDownloadQueue(video: video, serverURL: serverURL)
+                    }
+                    videoToDownload = nil
+                }
+            } message: { video in
+                Text("Download '\(video.name)'? The video will be available for offline viewing.")
+            }
+            .alert("Already Downloaded", isPresented: $showAlreadyDownloadedAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("This video has already been downloaded and is available in the Downloads tab.")
+            }
+            .alert("Cancel Download", isPresented: $showCancelDownloadAlert, presenting: videoToCancel) { video in
+                Button("Keep Downloading", role: .cancel) {
+                    videoToCancel = nil
+                }
+                Button("Cancel Download", role: .destructive) {
+                    downloadManager.cancelDownload(for: video.urlPath)
+                    videoToCancel = nil
+                }
+            } message: { video in
+                Text("Cancel download of '\(video.name)'?")
+            }
         }
         .navigationViewStyle(.stack)
         .task {
@@ -163,6 +199,26 @@ struct DirectoryBrowserView: View {
             if viewModel.currentPath == nil && viewModel.directories.isEmpty && viewModel.videos.isEmpty {
                 await viewModel.loadDirectory(nil)
             }
+        }
+    }
+
+    private func handleVideoLongPress(video: VideoItem) {
+        let downloadState = downloadManager.getDownloadState(for: video.urlPath)
+
+        switch downloadState {
+        case .none, .failed:
+            // Show download confirmation
+            videoToDownload = video
+            showDownloadAlert = true
+
+        case .alreadyDownloaded, .completed:
+            // Show "already downloaded" alert
+            showAlreadyDownloadedAlert = true
+
+        case .queued, .downloading:
+            // Show cancel download option
+            videoToCancel = video
+            showCancelDownloadAlert = true
         }
     }
 }
@@ -196,6 +252,9 @@ struct DirectoryGridItem: View {
 struct VideoGridItem: View {
     let video: VideoItem
     let serverURL: URL?
+    @StateObject private var downloadManager = DownloadManager.shared
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
     private var thumbnailURL: URL? {
         guard let serverURL = serverURL,
@@ -204,10 +263,15 @@ struct VideoGridItem: View {
         return apiService.getThumbnailURL(serverURL: serverURL, videoPath: video.urlPath)
     }
 
+    private var downloadState: DownloadState {
+        downloadManager.getDownloadState(for: video.urlPath)
+    }
+
     var body: some View {
         VStack(spacing: 8) {
-            // Thumbnail with progress bar
+            // Thumbnail with progress bar and download status
             ZStack(alignment: .bottom) {
+                ZStack(alignment: .topTrailing) {
                 if let thumbnailURL = thumbnailURL {
                     CachedAsyncImageWithPhase(url: thumbnailURL) { phase in
                         switch phase {
@@ -249,6 +313,17 @@ struct VideoGridItem: View {
                     }
                 }
 
+                    // Download status badge
+                    DownloadStatusBadge(state: downloadState)
+                        .padding(8)
+                        .onTapGesture {
+                            if case .failed(let error) = downloadState {
+                                errorMessage = error
+                                showErrorAlert = true
+                            }
+                        }
+                }
+
                 // Watch progress bar
                 if video.watchPercentage > 0 {
                     GeometryReader { geometry in
@@ -279,6 +354,16 @@ struct VideoGridItem: View {
             Text(video.formattedSize)
                 .font(.caption2)
                 .foregroundColor(.secondary)
+        }
+        .alert("Download Failed", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+            Button("Retry") {
+                if let serverURL = serverURL {
+                    downloadManager.addToDownloadQueue(video: video, serverURL: serverURL)
+                }
+            }
+        } message: {
+            Text(errorMessage)
         }
     }
 }

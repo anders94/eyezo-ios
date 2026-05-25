@@ -5,6 +5,7 @@ struct ServerSetupView: View {
     @State private var urlInput = ""
     @State private var isValidating = false
     @State private var errorMessage: String?
+    var onConnect: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 30) {
@@ -119,7 +120,8 @@ struct ServerSetupView: View {
 
                 if isValid {
                     serverURLManager.saveServerURL(url)
-                    // EyeZoApp will observe the serverURL change and handle navigation
+                    // Call the onConnect callback to navigate
+                    onConnect?()
                 } else {
                     errorMessage = "Cannot connect to server. Please check the URL and try again."
                 }

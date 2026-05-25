@@ -14,63 +14,20 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct EyeZoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var serverURLManager = ServerURLManager.shared
-    @State private var isCheckingServer = true
-    @State private var serverIsValid = false
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if isCheckingServer {
-                    // Loading screen while checking server
-                    VStack(spacing: 20) {
-                        ProgressView()
-                        Text("Checking server connection...")
-                            .foregroundColor(.secondary)
+            TabView {
+                BrowseTabView()
+                    .tabItem {
+                        Label("Browse", systemImage: "film.stack")
                     }
-                } else if serverIsValid {
-                    // Server is configured and reachable - show tabbed interface
-                    TabView {
-                        DirectoryBrowserView()
-                            .tabItem {
-                                Label("Browse", systemImage: "film.stack")
-                            }
 
-                        DownloadsView()
-                            .tabItem {
-                                Label("Downloads", systemImage: "arrow.down.circle.fill")
-                            }
+                DownloadsView()
+                    .tabItem {
+                        Label("Downloads", systemImage: "arrow.down.circle.fill")
                     }
-                } else {
-                    // Need to configure server or server is unreachable
-                    ServerSetupView()
-                }
-            }
-            .task {
-                await checkServerStatus()
-            }
-            .onChange(of: serverURLManager.serverURL) { _, _ in
-                // Re-check server status when URL changes (e.g., after user configures it)
-                Task { @MainActor in
-                    await checkServerStatus()
-                }
             }
         }
-    }
-
-    @MainActor
-    private func checkServerStatus() async {
-        // Check if we have a saved server URL
-        guard let serverURL = serverURLManager.serverURL else {
-            isCheckingServer = false
-            serverIsValid = false
-            return
-        }
-
-        // Validate the server is reachable
-        let isValid = await serverURLManager.validateServerURL(serverURL)
-
-        isCheckingServer = false
-        serverIsValid = isValid
     }
 }

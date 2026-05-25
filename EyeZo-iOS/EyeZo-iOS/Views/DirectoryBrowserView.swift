@@ -5,38 +5,58 @@ struct DirectoryBrowserView: View {
     @StateObject private var serverURLManager = ServerURLManager.shared
     @StateObject private var downloadManager = DownloadManager.shared
     @State private var selectedVideo: VideoItem?
-    @State private var showingServerSetup = false
     @State private var videoToDownload: VideoItem?
     @State private var showDownloadAlert = false
     @State private var showAlreadyDownloadedAlert = false
     @State private var showCancelDownloadAlert = false
     @State private var videoToCancel: VideoItem?
+    var onBack: (() -> Void)? = nil
 
     private var displayTitle: String {
-        guard let path = viewModel.currentPath else { return "EyeZo" }
+        guard let path = viewModel.currentPath else {
+            // At root - show server URL
+            return serverDisplayName
+        }
         // Extract just the last component of the path for display
         let components = path.split(separator: "/")
-        let lastComponent = components.last.map(String.init) ?? "EyeZo"
+        let lastComponent = components.last.map(String.init) ?? serverDisplayName
         // Decode URL encoding (e.g., %20 -> space)
         return lastComponent.removingPercentEncoding ?? lastComponent
     }
 
     private var parentDisplayName: String {
-        guard let parentPath = viewModel.parentPath else { return "EyeZo" }
-        // If parent is root (empty or "/"), show "EyeZo"
+        guard let parentPath = viewModel.parentPath else {
+            // At root - back button should say "Servers"
+            return "Servers"
+        }
+        // If parent is root (empty or "/"), show server URL
         if parentPath.isEmpty || parentPath == "/" {
-            return "EyeZo"
+            return serverDisplayName
         }
         // Extract the last component of the parent path
         let components = parentPath.split(separator: "/")
-        let lastComponent = components.last.map(String.init) ?? "EyeZo"
+        let lastComponent = components.last.map(String.init) ?? serverDisplayName
         // Decode URL encoding
         return lastComponent.removingPercentEncoding ?? lastComponent
     }
 
+    private var serverDisplayName: String {
+        guard let serverURL = serverURLManager.serverURL else {
+            return "Server"
+        }
+        // Show host:port if available, otherwise just host
+        if let host = serverURL.host {
+            if let port = serverURL.port {
+                return "\(host):\(port)"
+            }
+            return host
+        }
+        // Fallback to full URL
+        return serverURL.absoluteString
+    }
+
     var body: some View {
-        NavigationView {
-            Group {
+        Group {
                 if viewModel.isLoading && viewModel.directories.isEmpty && viewModel.videos.isEmpty {
                     ProgressView("Loading...")
                 } else if let errorMessage = viewModel.errorMessage, viewModel.directories.isEmpty && viewModel.videos.isEmpty {
@@ -109,13 +129,14 @@ struct DirectoryBrowserView: View {
                         await viewModel.refresh()
                     }
                 }
-            }
-            .navigationTitle(displayTitle)
-            .navigationBarTitleDisplayMode(.large)
+        }
+        .navigationTitle(displayTitle)
+        .navigationBarTitleDisplayMode(.large)
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if viewModel.parentPath != nil {
+                        // In a subdirectory - show back to parent button
                         Button(action: {
                             Task {
                                 await viewModel.loadDirectory(viewModel.parentPath)
@@ -126,25 +147,13 @@ struct DirectoryBrowserView: View {
                                 Text(parentDisplayName)
                             }
                         }
-                    }
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
-                        if viewModel.serverUnreachable {
-                            Button(action: {
-                                showingServerSetup = true
-                            }) {
-                                Image(systemName: "exclamationmark.circle.fill")
-                                    .foregroundColor(.red)
+                    } else if let onBack = onBack {
+                        // At root - show back button as "Servers"
+                        Button(action: onBack) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Servers")
                             }
-                        }
-
-                        Button(action: {
-                            showingServerSetup = true
-                        }) {
-                            Image(systemName: "gear")
-                                .foregroundColor(.blue)
                         }
                     }
                 }
@@ -159,9 +168,6 @@ struct DirectoryBrowserView: View {
             }) { video in
                 VideoPlayerView(video: video, serverURL: serverURLManager.serverURL)
                     .ignoresSafeArea()
-            }
-            .fullScreenCover(isPresented: $showingServerSetup) {
-                ServerSetupView()
             }
             .alert("Download Video", isPresented: $showDownloadAlert, presenting: videoToDownload) { video in
                 Button("Cancel", role: .cancel) {
@@ -192,9 +198,7 @@ struct DirectoryBrowserView: View {
             } message: { video in
                 Text("Cancel download of '\(video.name)'?")
             }
-        }
-        .navigationViewStyle(.stack)
-        .task {
+            .task {
             // Load root directory on first appearance
             if viewModel.currentPath == nil && viewModel.directories.isEmpty && viewModel.videos.isEmpty {
                 await viewModel.loadDirectory(nil)

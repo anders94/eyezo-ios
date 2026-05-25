@@ -10,11 +10,15 @@ class DirectoryViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var serverUnreachable = false
+    @Published var hasAttemptedInitialLoad = false
 
     private let apiService = APIService()
     private let serverURLManager = ServerURLManager.shared
 
     func loadDirectory(_ path: String? = nil) async {
+        // Mark as attempted immediately (before any async work)
+        hasAttemptedInitialLoad = true
+
         guard let serverURL = serverURLManager.serverURL else {
             errorMessage = "No server URL configured"
             serverUnreachable = true
@@ -40,7 +44,7 @@ class DirectoryViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             isLoading = false
 
-            // Check if server is unreachable
+            // Check if server is unreachable (with shorter timeout from custom URLSession)
             do {
                 let isHealthy = try await apiService.checkHealth(serverURL: serverURL)
                 if !isHealthy {

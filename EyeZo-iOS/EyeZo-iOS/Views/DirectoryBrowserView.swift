@@ -56,10 +56,9 @@ struct DirectoryBrowserView: View {
     }
 
     var body: some View {
-        Group {
-                if viewModel.isLoading && viewModel.directories.isEmpty && viewModel.videos.isEmpty {
-                    ProgressView("Loading...")
-                } else if let errorMessage = viewModel.errorMessage, viewModel.directories.isEmpty && viewModel.videos.isEmpty {
+        ZStack {
+            Group {
+                if let errorMessage = viewModel.errorMessage, viewModel.directories.isEmpty && viewModel.videos.isEmpty {
                     VStack(spacing: 20) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 60))
@@ -83,52 +82,79 @@ struct DirectoryBrowserView: View {
                         .buttonStyle(.borderedProminent)
                     }
                 } else {
-                    ScrollView {
-                        LazyVGrid(columns: [
-                            GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)
-                        ], spacing: 16) {
-                            // Directories first
-                            ForEach(viewModel.directories) { directory in
-                                Button(action: {
-                                    Task {
-                                        await viewModel.loadDirectory(directory.urlPath)
+                    ZStack {
+                        ScrollView {
+                            LazyVGrid(columns: [
+                                GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)
+                            ], spacing: 16) {
+                                // Directories first
+                                ForEach(viewModel.directories) { directory in
+                                    Button(action: {
+                                        Task {
+                                            await viewModel.loadDirectory(directory.urlPath)
+                                        }
+                                    }) {
+                                        DirectoryGridItem(directory: directory)
                                     }
-                                }) {
-                                    DirectoryGridItem(directory: directory)
+                                    .buttonStyle(.plain)
+                                    .disabled(viewModel.isLoading)
                                 }
-                                .buttonStyle(.plain)
-                            }
 
-                            // Videos
-                            ForEach(viewModel.videos) { video in
-                                VideoGridItem(video: video, serverURL: serverURLManager.serverURL)
-                                    .onTapGesture {
-                                        selectedVideo = video
-                                    }
-                                    .onLongPressGesture {
-                                        handleVideoLongPress(video: video)
-                                    }
+                                // Videos
+                                ForEach(viewModel.videos) { video in
+                                    VideoGridItem(video: video, serverURL: serverURLManager.serverURL)
+                                        .onTapGesture {
+                                            if !viewModel.isLoading {
+                                                selectedVideo = video
+                                            }
+                                        }
+                                        .onLongPressGesture {
+                                            if !viewModel.isLoading {
+                                                handleVideoLongPress(video: video)
+                                            }
+                                        }
+                                }
+                            }
+                            .padding()
+
+                            // Empty state
+                            if viewModel.directories.isEmpty && viewModel.videos.isEmpty && !viewModel.isLoading {
+                                VStack(spacing: 16) {
+                                    Image(systemName: "folder")
+                                        .font(.system(size: 50))
+                                        .foregroundColor(.secondary)
+                                    Text("No videos or directories found")
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 40)
                             }
                         }
-                        .padding()
-
-                        // Empty state
-                        if viewModel.directories.isEmpty && viewModel.videos.isEmpty && !viewModel.isLoading {
-                            VStack(spacing: 16) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 50))
-                                    .foregroundColor(.secondary)
-                                Text("No videos or directories found")
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 40)
+                        .refreshable {
+                            await viewModel.refresh()
                         }
-                    }
-                    .refreshable {
-                        await viewModel.refresh()
+                        .opacity(viewModel.isLoading && !viewModel.directories.isEmpty ? 0.5 : 1.0)
+
+                        // Show loading overlay when navigating with existing data
+                        if viewModel.isLoading && !viewModel.directories.isEmpty {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(Color.black.opacity(0.2))
+                        }
                     }
                 }
+            }
+
+            // Initial loading overlay - shown when no data loaded yet
+            if viewModel.isLoading && viewModel.directories.isEmpty && viewModel.videos.isEmpty && viewModel.errorMessage == nil {
+                Color(UIColor.systemBackground)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
+                    .overlay(
+                        ProgressView("Loading...")
+                    )
+            }
         }
         .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.large)
@@ -198,10 +224,16 @@ struct DirectoryBrowserView: View {
             } message: { video in
                 Text("Cancel download of '\(video.name)'?")
             }
-            .task {
+            .onAppear {
             // Load root directory on first appearance
-            if viewModel.currentPath == nil && viewModel.directories.isEmpty && viewModel.videos.isEmpty {
-                await viewModel.loadDirectory(nil)
+            // Use detached task to ensure it doesn't block tab switching
+            if !viewModel.hasAttemptedInitialLoad && viewModel.currentPath == nil {
+                let vm = viewModel
+                Task.detached(priority: .userInitiated) { @MainActor in
+                    // Small delay to ensure view is fully rendered
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    await vm.loadDirectory(nil)
+                }
             }
         }
     }

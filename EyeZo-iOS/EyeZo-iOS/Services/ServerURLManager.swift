@@ -6,6 +6,14 @@ class ServerURLManager: ObservableObject {
 
     private let userDefaultsKey = "serverURL"
 
+    // Custom URLSession with shorter timeouts
+    private let urlSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 15
+        return URLSession(configuration: config)
+    }()
+
     @Published var serverURL: URL? {
         didSet {
             if let url = serverURL {
@@ -35,7 +43,7 @@ class ServerURLManager: ObservableObject {
         let healthURL = url.appendingPathComponent("api/health")
 
         do {
-            let (_, response) = try await URLSession.shared.data(from: healthURL)
+            let (_, response) = try await urlSession.data(from: healthURL)
 
             if let httpResponse = response as? HTTPURLResponse {
                 return httpResponse.statusCode == 200

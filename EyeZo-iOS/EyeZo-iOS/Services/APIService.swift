@@ -24,11 +24,19 @@ enum NetworkError: Error, LocalizedError {
 }
 
 class APIService {
+    // Custom URLSession with shorter timeouts for better responsiveness
+    private let urlSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10  // 10 seconds for request timeout
+        config.timeoutIntervalForResource = 15  // 15 seconds for resource timeout
+        return URLSession(configuration: config)
+    }()
+
     func checkHealth(serverURL: URL) async throws -> Bool {
         let healthURL = serverURL.appendingPathComponent("api/health")
 
         do {
-            let (_, response) = try await URLSession.shared.data(from: healthURL)
+            let (_, response) = try await urlSession.data(from: healthURL)
 
             if let httpResponse = response as? HTTPURLResponse {
                 return httpResponse.statusCode == 200
@@ -50,7 +58,7 @@ class APIService {
         }
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: browseURL)
+            let (data, response) = try await urlSession.data(from: browseURL)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.invalidResponse

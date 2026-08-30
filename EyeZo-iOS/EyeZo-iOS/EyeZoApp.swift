@@ -49,7 +49,7 @@ struct EyeZoApp: App {
                     selectedTab = .downloads
                 }
             }
-            .onChange(of: scenePhase) { phase in
+            .onChange(of: scenePhase) { _, phase in
                 if phase == .active, networkMonitor.isConnected == true {
                     Task {
                         await WatchProgressSyncService.shared.syncIfNeeded()

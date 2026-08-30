@@ -394,7 +394,6 @@ class DownloadManager: NSObject, ObservableObject {
 
         if let thumbnailPath = await downloadThumbnail(for: tempVideoItem, serverURL: serverURL) {
             // Update CoreData with new thumbnail path
-            let context = coreDataManager.viewContext
             downloadedVideo.thumbnailPath = thumbnailPath
             coreDataManager.saveContext()
             print("✅ Thumbnail retry successful for '\(downloadedVideo.videoName)'")

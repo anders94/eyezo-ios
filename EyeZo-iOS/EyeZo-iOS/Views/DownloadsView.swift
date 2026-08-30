@@ -90,7 +90,11 @@ struct DownloadsView: View {
                     }
                 }
             }
-            .fullScreenCover(item: $selectedVideo) { video in
+            .fullScreenCover(item: $selectedVideo, onDismiss: {
+                Task {
+                    await viewModel.loadDownloadedVideos()
+                }
+            }) { video in
                 LocalVideoPlayerView(video: video)
                     .ignoresSafeArea()
             }

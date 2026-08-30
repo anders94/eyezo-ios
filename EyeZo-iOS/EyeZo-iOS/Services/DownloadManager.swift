@@ -434,6 +434,15 @@ class DownloadManager: NSObject, ObservableObject {
         downloadedVideo.mimeType = item.video.mimeType
         downloadedVideo.serverURL = item.serverURL.absoluteString
 
+        // Carry over the server's watch progress so offline playback
+        // resumes from where the online version left off
+        if let watchPosition = item.video.watchPosition, watchPosition > 0 {
+            downloadedVideo.watchPosition = watchPosition
+            if let lastWatched = item.video.lastWatched, lastWatched > 0 {
+                downloadedVideo.lastWatchedDate = Date(timeIntervalSince1970: TimeInterval(lastWatched))
+            }
+        }
+
         coreDataManager.saveContext()
     }
 }

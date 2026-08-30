@@ -15,6 +15,13 @@ public class DownloadedVideo: NSManagedObject, Identifiable {
     @NSManaged public var fileExtension: String
     @NSManaged public var mimeType: String
     @NSManaged public var serverURL: String
+    @NSManaged public var watchPosition: Double
+    @NSManaged public var lastWatchedDate: Date?
+
+    var watchPercentage: Double {
+        guard duration > 0, watchPosition > 0 else { return 0 }
+        return min((watchPosition / duration) * 100, 100)
+    }
 
     var formattedSize: String {
         let bytes = Double(fileSize)

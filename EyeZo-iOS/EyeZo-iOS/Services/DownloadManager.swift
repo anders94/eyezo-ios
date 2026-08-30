@@ -108,7 +108,7 @@ class DownloadManager: NSObject, ObservableObject {
         if let current = currentDownload, current.video.urlPath == videoPath {
             current.downloadTask?.cancel()
             currentDownload = nil
-            downloadStates[videoPath] = .none
+            downloadStates[videoPath] = nil
 
             // Start next download
             Task {
@@ -120,7 +120,7 @@ class DownloadManager: NSObject, ObservableObject {
         // Remove from queue if queued
         if let index = downloadQueue.firstIndex(where: { $0.video.urlPath == videoPath }) {
             downloadQueue.remove(at: index)
-            downloadStates[videoPath] = .none
+            downloadStates[videoPath] = nil
         }
     }
 
@@ -153,7 +153,7 @@ class DownloadManager: NSObject, ObservableObject {
         }
 
         // Update state
-        downloadStates[urlPath] = .none
+        downloadStates[urlPath] = nil
     }
 
     func isVideoDownloaded(urlPath: String) -> Bool {

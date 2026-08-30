@@ -35,17 +35,17 @@ actor ImageCache {
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200,
                       let image = UIImage(data: data) else {
-                    await removePendingRequest(for: url)
+                    removePendingRequest(for: url)
                     return nil
                 }
 
                 // Cache the image
-                await cacheImage(image, for: url)
-                await removePendingRequest(for: url)
+                cacheImage(image, for: url)
+                removePendingRequest(for: url)
 
                 return image
             } catch {
-                await removePendingRequest(for: url)
+                removePendingRequest(for: url)
                 return nil
             }
         }

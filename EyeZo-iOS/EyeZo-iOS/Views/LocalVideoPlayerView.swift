@@ -62,17 +62,23 @@ struct LocalVideoPlayerView: UIViewControllerRepresentable {
         private var hasCleanedUp = false
 
         func recordProgress(position: Double) {
-            guard position.isFinite, position > 0,
-                  let video = video, !video.isDeleted, video.managedObjectContext != nil else { return }
+            guard position.isFinite, position > 0, let video = video else { return }
 
-            video.watchPosition = position
-            video.lastWatchedDate = Date()
-            CoreDataManager.shared.saveContext()
+            // Defer past the current SwiftUI update pass: this can be called
+            // from dismantleUIViewController mid-update, and the row observes
+            // this object, so mutating/saving here would publish during a view update
+            DispatchQueue.main.async {
+                guard !video.isDeleted, video.managedObjectContext != nil else { return }
 
-            // Fire-and-forget report to the server this video came from;
-            // silently fails offline and gets reconciled by the sync service later
-            if let serverURL = URL(string: video.serverURL) {
-                APIService().reportWatchProgress(serverURL: serverURL, videoPath: video.urlPath, position: position)
+                video.watchPosition = position
+                video.lastWatchedDate = Date()
+                CoreDataManager.shared.saveContext()
+
+                // Fire-and-forget report to the server this video came from;
+                // silently fails offline and gets reconciled by the sync service later
+                if let serverURL = URL(string: video.serverURL) {
+                    APIService().reportWatchProgress(serverURL: serverURL, videoPath: video.urlPath, position: position)
+                }
             }
         }
 

@@ -146,6 +146,8 @@ class DownloadsViewModel: ObservableObject {
             inProgress.append(InProgressDownload(video: item.video, state: state))
         }
 
-        inProgressDownloads = inProgress
+        inProgressDownloads = inProgress.sorted {
+            $0.video.name.localizedStandardCompare($1.video.name) == .orderedAscending
+        }
     }
 }

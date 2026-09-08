@@ -176,7 +176,9 @@ class DownloadManager: NSObject, ObservableObject {
     func getAllDownloadedVideos() -> [DownloadedVideo] {
         let context = coreDataManager.viewContext
         let fetchRequest: NSFetchRequest<DownloadedVideo> = DownloadedVideo.fetchRequest()
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "downloadedDate", ascending: false)]
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "videoName", ascending: true, selector: #selector(NSString.localizedStandardCompare(_:)))
+        ]
 
         do {
             return try context.fetch(fetchRequest)

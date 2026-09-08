@@ -1,11 +1,11 @@
 import SwiftUI
 
-struct DownloadedVideoRow: View {
+struct DownloadedVideoGridItem: View {
     // Observed so the watch progress bar updates after playback
     @ObservedObject var video: DownloadedVideo
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Thumbnail with watch progress bar
             ZStack(alignment: .bottom) {
                 if let thumbnailPath = video.thumbnailPath,
@@ -13,20 +13,23 @@ struct DownloadedVideoRow: View {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 100, height: 56)
+                        .frame(maxWidth: .infinity)
+                        .aspectRatio(16/9, contentMode: .fit)
                         .clipped()
-                        .cornerRadius(8)
+                        .cornerRadius(12)
                 } else {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(Color.gray.opacity(0.2))
-                            .frame(width: 100, height: 56)
+                            .aspectRatio(16/9, contentMode: .fit)
+
                         Image(systemName: "film.fill")
+                            .font(.system(size: 40))
                             .foregroundColor(.gray)
-                            .font(.title2)
                     }
                 }
 
+                // Watch progress bar
                 if video.watchPercentage > 0 {
                     GeometryReader { geometry in
                         HStack(spacing: 0) {
@@ -37,33 +40,31 @@ struct DownloadedVideoRow: View {
                             Spacer(minLength: 0)
                         }
                     }
-                    .frame(width: 94, height: 3)
+                    .frame(height: 4)
                     .background(Color.black.opacity(0.3))
-                    .cornerRadius(1.5)
-                    .padding(.bottom, 3)
+                    .cornerRadius(2)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(video.videoName)
-                    .font(.body)
-                    .lineLimit(2)
+            // Video name
+            Text(video.videoName)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
 
-                HStack {
-                    Text(video.formattedSize)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    if video.duration > 0 {
-                        Text(video.formattedDuration)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+            // File size and duration
+            HStack(spacing: 6) {
+                Text(video.formattedSize)
+                if video.duration > 0 {
+                    Text("·")
+                    Text(video.formattedDuration)
                 }
             }
+            .font(.caption2)
+            .foregroundColor(.secondary)
         }
-        .padding(.vertical, 4)
     }
 }

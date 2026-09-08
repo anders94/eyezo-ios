@@ -6,8 +6,12 @@ struct DownloadsView: View {
     @State private var videoToDelete: DownloadedVideo?
     @State private var isRetryingThumbnails = false
 
+    private let columns = [
+        GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)
+    ]
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if viewModel.downloadedVideos.isEmpty && viewModel.inProgressDownloads.isEmpty {
                     // Empty state
@@ -24,47 +28,40 @@ struct DownloadsView: View {
                     }
                     .padding()
                 } else {
-                    List {
-                        // Storage info section
-                        Section {
-                            HStack {
-                                Label("Storage Used", systemImage: "internaldrive")
-                                    .foregroundColor(.secondary)
-                                    .font(.body)
-                                Spacer()
-                                Text(viewModel.formattedTotalSize)
-                                    .foregroundColor(.secondary)
-                                    .font(.body.monospacedDigit())
-                                    .lineLimit(1)
-                                    .fixedSize()
-                            }
-                        }
-                        .listRowBackground(Color.clear)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            // In-progress downloads
+                            if !viewModel.inProgressDownloads.isEmpty {
+                                sectionHeader("Downloading")
 
-                        // In-progress downloads section
-                        if !viewModel.inProgressDownloads.isEmpty {
-                            Section(header: Text("Downloading")) {
-                                ForEach(viewModel.inProgressDownloads) { download in
-                                    InProgressDownloadRow(download: download)
+                                LazyVGrid(columns: columns, spacing: 16) {
+                                    ForEach(viewModel.inProgressDownloads) { download in
+                                        InProgressDownloadGridItem(download: download)
+                                    }
+                                }
+                            }
+
+                            // Completed downloads
+                            if !viewModel.downloadedVideos.isEmpty {
+                                if !viewModel.inProgressDownloads.isEmpty {
+                                    sectionHeader("Downloaded")
+                                }
+
+                                LazyVGrid(columns: columns, spacing: 16) {
+                                    ForEach(viewModel.downloadedVideos) { video in
+                                        DownloadedVideoGridItem(video: video)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                selectedVideo = video
+                                            }
+                                            .onLongPressGesture {
+                                                videoToDelete = video
+                                            }
+                                    }
                                 }
                             }
                         }
-
-                        // Completed downloads section
-                        if !viewModel.downloadedVideos.isEmpty {
-                            Section(header: Text("Downloaded")) {
-                                ForEach(viewModel.downloadedVideos) { video in
-                                    DownloadedVideoRow(video: video)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            selectedVideo = video
-                                        }
-                                        .onLongPressGesture {
-                                            videoToDelete = video
-                                        }
-                                }
-                            }
-                        }
+                        .padding()
                     }
                 }
             }
@@ -87,6 +84,15 @@ struct DownloadsView: View {
                             }
                         }
                         .disabled(isRetryingThumbnails)
+                    }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !viewModel.downloadedVideos.isEmpty {
+                        Label(viewModel.formattedTotalSize, systemImage: "internaldrive")
+                            .labelStyle(.titleAndIcon)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -120,5 +126,11 @@ struct DownloadsView: View {
         .task {
             await viewModel.loadDownloadedVideos()
         }
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
+            .foregroundColor(.secondary)
     }
 }

@@ -10,13 +10,7 @@ struct DownloadedVideoGridItem: View {
             ZStack(alignment: .bottom) {
                 if let thumbnailPath = video.thumbnailPath,
                    let image = UIImage(contentsOfFile: thumbnailPath) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .aspectRatio(16/9, contentMode: .fit)
-                        .clipped()
-                        .cornerRadius(12)
+                    ThumbnailImage(image: Image(uiImage: image))
                 } else {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)

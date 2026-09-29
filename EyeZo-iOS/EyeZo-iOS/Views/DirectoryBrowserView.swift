@@ -318,13 +318,7 @@ struct VideoGridItem: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
                         case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(maxWidth: .infinity)
-                                .aspectRatio(16/9, contentMode: .fit)
-                                .clipped()
-                                .cornerRadius(12)
+                            ThumbnailImage(image: image)
                         case .failure:
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)

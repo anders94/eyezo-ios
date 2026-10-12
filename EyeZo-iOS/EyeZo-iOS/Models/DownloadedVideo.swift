@@ -18,22 +18,36 @@ public class DownloadedVideo: NSManagedObject, Identifiable {
     @NSManaged public var watchPosition: Double
     @NSManaged public var lastWatchedDate: Date?
 
+    /// Root of all downloaded files. Its absolute path includes the app's container ID,
+    /// which changes when the app is reinstalled, so files are always located by name
+    /// relative to this rather than by a stored absolute path.
+    static var downloadsDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("com.eyezo.app/downloads")
+    }
+
+    // localFilePath/thumbnailPath hold a file name (older records hold a full path
+    // from a previous container), so only the last component is used
+    var localFileURL: URL {
+        Self.downloadsDirectory
+            .appendingPathComponent("videos")
+            .appendingPathComponent((localFilePath as NSString).lastPathComponent)
+    }
+
+    var thumbnailURL: URL? {
+        guard let thumbnailPath = thumbnailPath else { return nil }
+        return Self.downloadsDirectory
+            .appendingPathComponent("thumbnails")
+            .appendingPathComponent((thumbnailPath as NSString).lastPathComponent)
+    }
+
     var watchPercentage: Double {
         guard duration > 0, watchPosition > 0 else { return 0 }
         return min((watchPosition / duration) * 100, 100)
     }
 
     var formattedSize: String {
-        let bytes = Double(fileSize)
-        if bytes < 1024 {
-            return "\(Int(bytes)) B"
-        } else if bytes < 1024 * 1024 {
-            return String(format: "%.1f KB", bytes / 1024)
-        } else if bytes < 1024 * 1024 * 1024 {
-            return String(format: "%.1f MB", bytes / (1024 * 1024))
-        } else {
-            return String(format: "%.2f GB", bytes / (1024 * 1024 * 1024))
-        }
+        fileSize.formattedByteCount
     }
 
     var formattedDuration: String {

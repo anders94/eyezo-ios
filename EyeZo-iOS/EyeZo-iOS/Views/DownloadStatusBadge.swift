@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DownloadStatusBadge: View {
     let state: DownloadState
+    var queuePosition: Int? = nil
     @State private var isAnimating = false
 
     var body: some View {
@@ -22,14 +23,30 @@ struct DownloadStatusBadge: View {
                 }
 
             case .queued:
-                ZStack {
-                    Circle()
-                        .fill(Color.black.opacity(0.6))
-                        .frame(width: 32, height: 32)
+                if let queuePosition = queuePosition {
+                    // Queued, with its place in line
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.orange)
 
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.orange)
+                        Text("\(queuePosition)")
+                            .font(.system(size: 14, weight: .bold).monospacedDigit())
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 9)
+                    .frame(height: 32)
+                    .background(Capsule().fill(Color.black.opacity(0.6)))
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(Color.black.opacity(0.6))
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.orange)
+                    }
                 }
 
             case .downloading(let progress):
@@ -83,5 +100,54 @@ struct DownloadStatusBadge: View {
                 }
             }
         }
+    }
+}
+
+/// Corner button that starts a download, or a spinner while one is being prepared
+struct DownloadButton: View {
+    var isBusy = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color.black.opacity(0.6))
+                    .frame(width: 32, height: 32)
+
+                if isBusy {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(isBusy)
+        .accessibilityLabel("Download")
+    }
+}
+
+/// Corner button shown in edit mode to delete a download
+struct DeleteButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color.black.opacity(0.6))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: "trash.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(.red)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Delete")
     }
 }

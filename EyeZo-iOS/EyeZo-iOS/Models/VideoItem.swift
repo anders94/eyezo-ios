@@ -27,17 +27,6 @@ struct VideoItem: Codable, Identifiable, Hashable {
     }
 
     var formattedSize: String {
-        let bytes = Double(size)
-        let kb = bytes / 1024
-        let mb = kb / 1024
-        let gb = mb / 1024
-
-        if gb >= 1 {
-            return String(format: "%.1f GB", gb)
-        } else if mb >= 1 {
-            return String(format: "%.1f MB", mb)
-        } else {
-            return String(format: "%.1f KB", kb)
-        }
+        size.formattedByteCount
     }
 }

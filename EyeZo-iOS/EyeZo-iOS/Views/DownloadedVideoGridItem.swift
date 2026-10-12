@@ -8,8 +8,8 @@ struct DownloadedVideoGridItem: View {
         VStack(spacing: 8) {
             // Thumbnail with watch progress bar
             ZStack(alignment: .bottom) {
-                if let thumbnailPath = video.thumbnailPath,
-                   let image = UIImage(contentsOfFile: thumbnailPath) {
+                if let thumbnailURL = video.thumbnailURL,
+                   let image = UIImage(contentsOfFile: thumbnailURL.path) {
                     ThumbnailImage(image: Image(uiImage: image))
                 } else {
                     ZStack {
@@ -25,20 +25,7 @@ struct DownloadedVideoGridItem: View {
 
                 // Watch progress bar
                 if video.watchPercentage > 0 {
-                    GeometryReader { geometry in
-                        HStack(spacing: 0) {
-                            Rectangle()
-                                .fill(Color.red)
-                                .frame(width: geometry.size.width * (video.watchPercentage / 100))
-
-                            Spacer(minLength: 0)
-                        }
-                    }
-                    .frame(height: 4)
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(2)
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 4)
+                    WatchProgressBar(percentage: video.watchPercentage)
                 }
             }
 

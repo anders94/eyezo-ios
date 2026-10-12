@@ -1,5 +1,6 @@
 import Foundation
 import CoreData
+import AVFoundation
 import UIKit
 import Combine
 
@@ -7,8 +8,17 @@ import Combine
 class DownloadManager: NSObject, ObservableObject {
     static let shared = DownloadManager()
 
-    @Published private(set) var downloadQueue: [DownloadItem] = []
-    @Published private(set) var currentDownload: DownloadItem?
+    @Published private(set) var downloadQueue: [DownloadItem] = [] {
+        didSet { persistPendingDownloads() }
+    }
+    @Published private(set) var currentDownload: DownloadItem? {
+        didSet {
+            if currentDownload?.video.urlPath != oldValue?.video.urlPath {
+                persistPendingDownloads()
+            }
+        }
+    }
+    @Published private(set) var failedDownloads: [DownloadItem] = []
     @Published private(set) var downloadStates: [String: DownloadState] = [:] // Key: video.urlPath
 
     private var backgroundSession: URLSession!
@@ -19,6 +29,8 @@ class DownloadManager: NSObject, ObservableObject {
     // Storage paths
     private var videosDirectory: URL!
     private var thumbnailsDirectory: URL!
+    private var pendingDownloadsFile: URL!
+    private var isRestoringPendingDownloads = false
 
     // Background completion handler
     var backgroundCompletionHandler: (() -> Void)?
@@ -31,18 +43,16 @@ class DownloadManager: NSObject, ObservableObject {
         setupStorageDirectories()
         setupBackgroundSession()
         loadDownloadStates()
+        restorePendingDownloads()
     }
 
     // MARK: - Setup
 
     private func setupStorageDirectories() {
-        guard let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            fatalError("Could not access Application Support directory")
-        }
-
-        let baseURL = appSupportURL.appendingPathComponent("com.eyezo.app/downloads")
+        let baseURL = DownloadedVideo.downloadsDirectory
         videosDirectory = baseURL.appendingPathComponent("videos")
         thumbnailsDirectory = baseURL.appendingPathComponent("thumbnails")
+        pendingDownloadsFile = baseURL.appendingPathComponent("pending-downloads.json")
 
         do {
             try fileManager.createDirectory(at: videosDirectory, withIntermediateDirectories: true)
@@ -73,27 +83,31 @@ class DownloadManager: NSObject, ObservableObject {
     // MARK: - Public API
 
     func addToDownloadQueue(video: VideoItem, serverURL: URL) {
-        // Check if already downloaded
-        if isVideoDownloaded(urlPath: video.urlPath) {
-            downloadStates[video.urlPath] = .alreadyDownloaded
-            return
+        addToDownloadQueue(videos: [video], serverURL: serverURL)
+    }
+
+    func addToDownloadQueue(videos: [VideoItem], serverURL: URL) {
+        var newItems: [DownloadItem] = []
+
+        for video in videos {
+            // Skip anything already downloaded
+            if isVideoDownloaded(urlPath: video.urlPath) {
+                downloadStates[video.urlPath] = .completed
+                continue
+            }
+
+            // Skip anything already queued or downloading
+            if isPending(urlPath: video.urlPath) || newItems.contains(where: { $0.video.urlPath == video.urlPath }) {
+                continue
+            }
+
+            failedDownloads.removeAll { $0.video.urlPath == video.urlPath }
+            newItems.append(DownloadItem(video: video, serverURL: serverURL))
+            downloadStates[video.urlPath] = .queued
         }
 
-        // Check if already in queue
-        if downloadQueue.contains(where: { $0.video.urlPath == video.urlPath }) {
-            return
-        }
-
-        // Check if currently downloading
-        if currentDownload?.video.urlPath == video.urlPath {
-            return
-        }
-
-        // Add to queue
-        var item = DownloadItem(video: video, serverURL: serverURL)
-        item.state = .queued
-        downloadQueue.append(item)
-        downloadStates[video.urlPath] = .queued
+        guard !newItems.isEmpty else { return }
+        downloadQueue.append(contentsOf: newItems)
 
         // Start download if nothing is downloading
         if currentDownload == nil {
@@ -103,10 +117,18 @@ class DownloadManager: NSObject, ObservableObject {
         }
     }
 
+    func retryFailedDownload(for videoPath: String) {
+        guard let item = failedDownloads.first(where: { $0.video.urlPath == videoPath }) else { return }
+        addToDownloadQueue(video: item.video, serverURL: item.serverURL)
+    }
+
     func cancelDownload(for videoPath: String) {
         // Cancel if currently downloading
         if let current = currentDownload, current.video.urlPath == videoPath {
-            current.downloadTask?.cancel()
+            if let task = current.downloadTask {
+                task.cancel()
+                taskToItemMapping.removeValue(forKey: task.taskIdentifier)
+            }
             currentDownload = nil
             downloadStates[videoPath] = nil
 
@@ -122,12 +144,47 @@ class DownloadManager: NSObject, ObservableObject {
             downloadQueue.remove(at: index)
             downloadStates[videoPath] = nil
         }
+
+        // Forget a failed download
+        if let index = failedDownloads.firstIndex(where: { $0.video.urlPath == videoPath }) {
+            failedDownloads.remove(at: index)
+            downloadStates[videoPath] = nil
+        }
+    }
+
+    /// Cancels every queued, downloading, or failed download under `folder`
+    func cancelDownloads(inFolder folder: [String]) {
+        let paths = ([currentDownload].compactMap { $0 } + downloadQueue + failedDownloads)
+            .map(\.video.urlPath)
+            .filter { DownloadTree.urlPath($0, isInFolder: folder) }
+
+        for path in paths {
+            cancelDownload(for: path)
+        }
+    }
+
+    /// Deletes every downloaded video under `folder` and cancels anything still pending there
+    func deleteDownloads(inFolder folder: [String]) {
+        cancelDownloads(inFolder: folder)
+
+        for video in getAllDownloadedVideos() where DownloadTree.urlPath(video.urlPath, isInFolder: folder) {
+            deleteDownloadedVideo(video)
+        }
+    }
+
+    /// 1-based position in the queue for a waiting download, nil otherwise
+    func queuePosition(for videoPath: String) -> Int? {
+        downloadQueue.firstIndex { $0.video.urlPath == videoPath }.map { $0 + 1 }
+    }
+
+    func isPending(urlPath: String) -> Bool {
+        currentDownload?.video.urlPath == urlPath || downloadQueue.contains { $0.video.urlPath == urlPath }
     }
 
     func deleteDownloadedVideo(_ downloadedVideo: DownloadedVideo) {
         // Extract data before deletion (to avoid using deleted object)
-        let localFilePath = downloadedVideo.localFilePath
-        let thumbnailPath = downloadedVideo.thumbnailPath
+        let videoURL = downloadedVideo.localFileURL
+        let thumbnailURL = downloadedVideo.thumbnailURL
         let urlPath = downloadedVideo.urlPath
 
         // Delete from CoreData first
@@ -143,12 +200,10 @@ class DownloadManager: NSObject, ObservableObject {
         }
 
         // Now delete files from disk
-        let videoURL = URL(fileURLWithPath: localFilePath)
         try? fileManager.removeItem(at: videoURL)
 
         // Delete thumbnail if exists
-        if let thumbnailPath = thumbnailPath {
-            let thumbnailURL = URL(fileURLWithPath: thumbnailPath)
+        if let thumbnailURL = thumbnailURL {
             try? fileManager.removeItem(at: thumbnailURL)
         }
 
@@ -220,8 +275,11 @@ class DownloadManager: NSObject, ObservableObject {
     }
 
     private func handleDownloadCompletion(task: URLSessionDownloadTask, movedLocation: Result<URL, FileError>) async {
-        guard let itemId = taskToItemMapping[task.taskIdentifier],
-              let item = currentDownload, item.id == itemId else {
+        guard let item = currentItem(for: task) else {
+            // Not ours (e.g. cancelled) - don't leave the file behind
+            if case .success(let url) = movedLocation {
+                try? fileManager.removeItem(at: url)
+            }
             return
         }
 
@@ -237,16 +295,14 @@ class DownloadManager: NSObject, ObservableObject {
             } else {
                 errorMsg = "Failed to save file"
             }
-            downloadStates[item.video.urlPath] = .failed(error: errorMsg)
-            currentDownload = nil
+            recordFailure(item, error: errorMsg)
             await startNextDownload()
             return
         }
 
         // Rename with proper extension
         guard let finalURL = renameWithProperExtension(tempURL: tempURL, for: item) else {
-            downloadStates[item.video.urlPath] = .failed(error: "Failed to rename file")
-            currentDownload = nil
+            recordFailure(item, error: "Failed to rename file")
             await startNextDownload()
             return
         }
@@ -254,16 +310,122 @@ class DownloadManager: NSObject, ObservableObject {
         // Download thumbnail
         let thumbnailPath = await downloadThumbnail(for: item.video, serverURL: item.serverURL)
 
+        // The server only knows the duration once it has scanned the file's metadata
+        var duration = item.video.duration ?? 0
+        if duration <= 0 {
+            duration = await localDuration(of: finalURL)
+        }
+
         // Save to CoreData
-        saveToDatabase(item, localURL: finalURL, thumbnailPath: thumbnailPath)
+        saveToDatabase(item, localURL: finalURL, thumbnailPath: thumbnailPath, duration: duration)
 
         // Update state
         downloadStates[item.video.urlPath] = .completed
         taskToItemMapping.removeValue(forKey: task.taskIdentifier)
-        currentDownload = nil
+        // The download may have been cancelled (and the next one started) while the thumbnail loaded
+        if currentDownload?.id == item.id {
+            currentDownload = nil
+        }
 
         // Start next download
         await startNextDownload()
+    }
+
+    private func recordFailure(_ item: DownloadItem, error: String) {
+        var failedItem = item
+        failedItem.downloadTask = nil
+        failedDownloads.removeAll { $0.video.urlPath == item.video.urlPath }
+        failedDownloads.append(failedItem)
+        downloadStates[item.video.urlPath] = .failed(error: error)
+        currentDownload = nil
+    }
+
+    /// The current download a session task belongs to. Tasks that outlived a
+    /// previous launch have no mapping yet, so they're matched by URL and
+    /// adopted if they belong to a pending download.
+    private func currentItem(for task: URLSessionTask) -> DownloadItem? {
+        if let itemId = taskToItemMapping[task.taskIdentifier] {
+            guard let item = currentDownload, item.id == itemId else { return nil }
+            return item
+        }
+
+        guard let taskURL = task.originalRequest?.url else { return nil }
+        let matches: (DownloadItem) -> Bool = { [apiService] item in
+            apiService.getVideoURL(serverURL: item.serverURL, videoPath: item.video.urlPath) == taskURL
+        }
+
+        if let current = currentDownload, current.downloadTask == nil, matches(current) {
+            adopt(task, for: current)
+            return currentDownload
+        }
+
+        if currentDownload == nil, let index = downloadQueue.firstIndex(where: matches) {
+            let item = downloadQueue.remove(at: index)
+            adopt(task, for: item)
+            return currentDownload
+        }
+
+        return nil
+    }
+
+    private func adopt(_ task: URLSessionTask, for item: DownloadItem) {
+        var adoptedItem = item
+        adoptedItem.downloadTask = task as? URLSessionDownloadTask
+        taskToItemMapping[task.taskIdentifier] = item.id
+        currentDownload = adoptedItem
+        downloadStates[item.video.urlPath] = .downloading(progress: 0.0)
+    }
+
+    // MARK: - Queue Persistence
+
+    private struct PersistedDownload: Codable {
+        let video: VideoItem
+        let serverURL: URL
+    }
+
+    private func persistPendingDownloads() {
+        guard !isRestoringPendingDownloads else { return }
+
+        let items = [currentDownload].compactMap { $0 } + downloadQueue
+        let persisted = items.map { PersistedDownload(video: $0.video, serverURL: $0.serverURL) }
+
+        if persisted.isEmpty {
+            try? fileManager.removeItem(at: pendingDownloadsFile)
+        } else if let data = try? JSONEncoder().encode(persisted) {
+            try? data.write(to: pendingDownloadsFile, options: .atomic)
+        }
+    }
+
+    /// Re-queues downloads that were pending when the app last quit. A task
+    /// still running in the background session is adopted rather than restarted;
+    /// any other leftover task is cancelled.
+    private func restorePendingDownloads() {
+        guard let data = try? Data(contentsOf: pendingDownloadsFile),
+              let persisted = try? JSONDecoder().decode([PersistedDownload].self, from: data) else { return }
+
+        isRestoringPendingDownloads = true
+        let items = persisted
+            .filter { !isVideoDownloaded(urlPath: $0.video.urlPath) }
+            .map { DownloadItem(video: $0.video, serverURL: $0.serverURL) }
+        downloadQueue = items
+        for item in items {
+            downloadStates[item.video.urlPath] = .queued
+        }
+        isRestoringPendingDownloads = false
+
+        backgroundSession.getAllTasks { [weak self] tasks in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+
+                for task in tasks where task.state == .running || task.state == .suspended {
+                    if self.currentItem(for: task) == nil {
+                        task.cancel()
+                    }
+                }
+
+                await self.startNextDownload()
+            }
+        }
     }
 
     private func renameWithProperExtension(tempURL: URL, for item: DownloadItem) -> URL? {
@@ -280,8 +442,7 @@ class DownloadManager: NSObject, ObservableObject {
     }
 
     private func handleDownloadProgress(task: URLSessionDownloadTask, progress: Double) {
-        guard let itemId = taskToItemMapping[task.taskIdentifier],
-              let item = currentDownload, item.id == itemId else {
+        guard let item = currentItem(for: task) else {
             return
         }
 
@@ -291,8 +452,7 @@ class DownloadManager: NSObject, ObservableObject {
     }
 
     private func handleDownloadError(task: URLSessionTask, error: Error) async {
-        guard let itemId = taskToItemMapping[task.taskIdentifier],
-              let item = currentDownload, item.id == itemId else {
+        guard let item = currentItem(for: task) else {
             return
         }
 
@@ -319,9 +479,8 @@ class DownloadManager: NSObject, ObservableObject {
             errorMsg = "Download failed: \(error.localizedDescription)"
         }
 
-        downloadStates[item.video.urlPath] = .failed(error: errorMsg)
         taskToItemMapping.removeValue(forKey: task.taskIdentifier)
-        currentDownload = nil
+        recordFailure(item, error: errorMsg)
 
         // Start next download
         await startNextDownload()
@@ -361,7 +520,8 @@ class DownloadManager: NSObject, ObservableObject {
 
             try jpegData.write(to: thumbnailPath)
             print("✅ Thumbnail downloaded successfully for '\(video.name)' (saved to: \(thumbnailPath.lastPathComponent))")
-            return thumbnailPath.path
+            // Store just the file name; see DownloadedVideo.downloadsDirectory
+            return thumbnailPath.lastPathComponent
         } catch {
             print("⚠️ Thumbnail download failed for '\(video.name)': \(error.localizedDescription)")
             return nil
@@ -404,6 +564,29 @@ class DownloadManager: NSObject, ObservableObject {
         }
     }
 
+    /// Reads the duration from the downloaded file itself; 0 if it can't be determined
+    private func localDuration(of url: URL) async -> Double {
+        guard let duration = try? await AVURLAsset(url: url).load(.duration) else { return 0 }
+        let seconds = duration.seconds
+        return seconds.isFinite && seconds > 0 ? seconds : 0
+    }
+
+    /// Fills in durations for downloads saved without one (the watch progress bar needs it)
+    func backfillMissingDurations() async {
+        var didChange = false
+
+        for video in getAllDownloadedVideos() where video.duration <= 0 {
+            let duration = await localDuration(of: video.localFileURL)
+            guard duration > 0, !video.isDeleted, video.managedObjectContext != nil else { continue }
+            video.duration = duration
+            didChange = true
+        }
+
+        if didChange {
+            coreDataManager.saveContext()
+        }
+    }
+
     // Batch retry for all videos missing thumbnails
     func retryMissingThumbnails() async {
         let videos = getAllDownloadedVideos()
@@ -418,7 +601,7 @@ class DownloadManager: NSObject, ObservableObject {
         print("✅ Batch thumbnail retry complete")
     }
 
-    private func saveToDatabase(_ item: DownloadItem, localURL: URL, thumbnailPath: String?) {
+    private func saveToDatabase(_ item: DownloadItem, localURL: URL, thumbnailPath: String?, duration: Double) {
         let context = coreDataManager.viewContext
         let downloadedVideo = DownloadedVideo(context: context)
 
@@ -427,22 +610,14 @@ class DownloadManager: NSObject, ObservableObject {
         downloadedVideo.originalPath = item.video.path
         downloadedVideo.urlPath = item.video.urlPath
         downloadedVideo.fileSize = item.video.size
-        downloadedVideo.localFilePath = localURL.path
+        downloadedVideo.localFilePath = localURL.lastPathComponent
         downloadedVideo.thumbnailPath = thumbnailPath
-        downloadedVideo.duration = item.video.duration ?? 0
+        downloadedVideo.duration = duration
         downloadedVideo.downloadedDate = Date()
         downloadedVideo.fileExtension = item.video.extension
         downloadedVideo.mimeType = item.video.mimeType
         downloadedVideo.serverURL = item.serverURL.absoluteString
-
-        // Carry over the server's watch progress so offline playback
-        // resumes from where the online version left off
-        if let watchPosition = item.video.watchPosition, watchPosition > 0 {
-            downloadedVideo.watchPosition = watchPosition
-            if let lastWatched = item.video.lastWatched, lastWatched > 0 {
-                downloadedVideo.lastWatchedDate = Date(timeIntervalSince1970: TimeInterval(lastWatched))
-            }
-        }
+        // Watch progress starts fresh: offline progress is tracked separately from the server's
 
         coreDataManager.saveContext()
     }

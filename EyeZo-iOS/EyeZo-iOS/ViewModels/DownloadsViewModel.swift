@@ -2,16 +2,11 @@ import Foundation
 import Combine
 import CoreData
 
-struct InProgressDownload: Identifiable {
-    let id = UUID()
-    let video: VideoItem
-    let state: DownloadState
-}
-
 @MainActor
 class DownloadsViewModel: ObservableObject {
     @Published private(set) var downloadedVideos: [DownloadedVideo] = []
-    @Published private(set) var inProgressDownloads: [InProgressDownload] = []
+    /// Downloaded and pending videos together; the folder tree is derived from these
+    @Published private(set) var entries: [DownloadEntry] = []
     @Published private(set) var totalStorageUsed: Int64 = 0
 
     private let downloadManager = DownloadManager.shared
@@ -25,53 +20,33 @@ class DownloadsViewModel: ObservableObject {
             .sink { [weak self] states in
                 guard let self = self else { return }
 
-                self.updateInProgressDownloads()
-
-                // Check if any download just transitioned to completed
-                for (urlPath, state) in states {
-                    if case .completed = state {
-                        // Check if this is a new completion (wasn't completed before)
-                        let wasCompleted: Bool
-                        if let previousState = self.previousStates[urlPath] {
-                            if case .completed = previousState {
-                                wasCompleted = true
-                            } else {
-                                wasCompleted = false
-                            }
-                        } else {
-                            wasCompleted = false
-                        }
-
-                        if !wasCompleted {
-                            // New completion detected - reload downloaded videos
-                            Task {
-                                await self.loadDownloadedVideos()
-                            }
-                            break
-                        }
-                    }
+                // Reload downloaded videos when any download newly completes
+                let hasNewCompletion = states.contains { urlPath, state in
+                    guard case .completed = state else { return false }
+                    if case .completed = self.previousStates[urlPath] { return false }
+                    return true
                 }
-
-                // Update previous states
                 self.previousStates = states
-            }
-            .store(in: &cancellables)
 
-        // Observe current download changes
-        downloadManager.$currentDownload
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.updateInProgressDownloads()
+                if hasNewCompletion {
+                    self.reloadDownloadedVideos()
+                } else {
+                    self.rebuildEntries()
+                }
             }
             .store(in: &cancellables)
 
         // Observe queue changes
-        downloadManager.$downloadQueue
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.updateInProgressDownloads()
-            }
-            .store(in: &cancellables)
+        Publishers.Merge3(
+            downloadManager.$currentDownload.map { _ in () },
+            downloadManager.$downloadQueue.map { _ in () },
+            downloadManager.$failedDownloads.map { _ in () }
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] in
+            self?.rebuildEntries()
+        }
+        .store(in: &cancellables)
     }
 
     var formattedTotalSize: String {
@@ -104,8 +79,8 @@ class DownloadsViewModel: ObservableObject {
     }
 
     func loadDownloadedVideos() async {
-        downloadedVideos = downloadManager.getAllDownloadedVideos()
-        totalStorageUsed = downloadManager.getTotalStorageUsed()
+        reloadDownloadedVideos()
+        await downloadManager.backfillMissingDurations()
     }
 
     func deleteVideo(_ video: DownloadedVideo) {
@@ -120,34 +95,59 @@ class DownloadsViewModel: ObservableObject {
 
         // Recalculate storage
         totalStorageUsed = downloadManager.getTotalStorageUsed()
+        rebuildEntries()
+    }
+
+    func deleteFolder(_ folder: [String]) {
+        downloadManager.deleteDownloads(inFolder: folder)
+        reloadDownloadedVideos()
+    }
+
+    func cancelDownload(_ urlPath: String) {
+        downloadManager.cancelDownload(for: urlPath)
+    }
+
+    func cancelDownloads(inFolder folder: [String]) {
+        downloadManager.cancelDownloads(inFolder: folder)
+    }
+
+    func retryDownload(_ urlPath: String) {
+        downloadManager.retryFailedDownload(for: urlPath)
     }
 
     func retryMissingThumbnails() async {
         await downloadManager.retryMissingThumbnails()
-        await loadDownloadedVideos()
+        reloadDownloadedVideos()
     }
 
     var hasVideosWithoutThumbnails: Bool {
         downloadedVideos.contains { $0.thumbnailPath == nil }
     }
 
-    private func updateInProgressDownloads() {
-        var inProgress: [InProgressDownload] = []
+    private func reloadDownloadedVideos() {
+        downloadedVideos = downloadManager.getAllDownloadedVideos()
+        totalStorageUsed = downloadManager.getTotalStorageUsed()
+        rebuildEntries()
+    }
 
-        // Add current download
-        if let current = downloadManager.currentDownload {
-            let state = downloadManager.getDownloadState(for: current.video.urlPath)
-            inProgress.append(InProgressDownload(video: current.video, state: state))
+    private func rebuildEntries() {
+        var result = downloadedVideos.map(DownloadEntry.downloaded)
+        var seen = Set(downloadedVideos.map(\.urlPath))
+
+        let pendingItems = [downloadManager.currentDownload].compactMap { $0 }
+            + downloadManager.downloadQueue
+            + downloadManager.failedDownloads
+
+        for item in pendingItems where !seen.contains(item.video.urlPath) {
+            seen.insert(item.video.urlPath)
+            result.append(.pending(PendingDownload(
+                video: item.video,
+                serverURL: item.serverURL,
+                state: downloadManager.getDownloadState(for: item.video.urlPath),
+                queuePosition: downloadManager.queuePosition(for: item.video.urlPath)
+            )))
         }
 
-        // Add queued downloads
-        for item in downloadManager.downloadQueue {
-            let state = downloadManager.getDownloadState(for: item.video.urlPath)
-            inProgress.append(InProgressDownload(video: item.video, state: state))
-        }
-
-        inProgressDownloads = inProgress.sorted {
-            $0.video.name.localizedStandardCompare($1.video.name) == .orderedAscending
-        }
+        entries = result
     }
 }

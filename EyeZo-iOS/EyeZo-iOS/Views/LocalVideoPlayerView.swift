@@ -7,14 +7,9 @@ struct LocalVideoPlayerView: UIViewControllerRepresentable {
     let video: DownloadedVideo
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
-        // Configure audio session
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try? AVAudioSession.sharedInstance().setActive(true)
-
         let controller = AVPlayerViewController()
 
-        let fileURL = URL(fileURLWithPath: video.localFilePath)
-        let player = AVPlayer(url: fileURL)
+        let player = AVPlayer(url: video.localFileURL)
         controller.player = player
 
         let coordinator = context.coordinator
@@ -29,7 +24,7 @@ struct LocalVideoPlayerView: UIViewControllerRepresentable {
             player.seek(to: time)
         }
 
-        // Track progress locally (and report to the origin server when reachable)
+        // Track progress locally
         let interval = CMTime(seconds: 10, preferredTimescale: 1)
         let timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
             coordinator.recordProgress(position: time.seconds)
@@ -64,6 +59,9 @@ struct LocalVideoPlayerView: UIViewControllerRepresentable {
         func recordProgress(position: Double) {
             guard position.isFinite, position > 0, let video = video else { return }
 
+            // The player knows the real duration even when the server didn't
+            let playerDuration = player?.currentItem?.duration.seconds ?? 0
+
             // Defer past the current SwiftUI update pass: this can be called
             // from dismantleUIViewController mid-update, and the row observes
             // this object, so mutating/saving here would publish during a view update
@@ -72,13 +70,11 @@ struct LocalVideoPlayerView: UIViewControllerRepresentable {
 
                 video.watchPosition = position
                 video.lastWatchedDate = Date()
-                CoreDataManager.shared.saveContext()
-
-                // Fire-and-forget report to the server this video came from;
-                // silently fails offline and gets reconciled by the sync service later
-                if let serverURL = URL(string: video.serverURL) {
-                    APIService().reportWatchProgress(serverURL: serverURL, videoPath: video.urlPath, position: position)
+                if playerDuration.isFinite, playerDuration > 0, abs(playerDuration - video.duration) > 1 {
+                    video.duration = playerDuration
                 }
+                // Offline progress stays on the device; it's never reported to the server
+                CoreDataManager.shared.saveContext()
             }
         }
 

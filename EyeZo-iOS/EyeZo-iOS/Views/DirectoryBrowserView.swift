@@ -5,11 +5,12 @@ struct DirectoryBrowserView: View {
     @StateObject private var serverURLManager = ServerURLManager.shared
     @StateObject private var downloadManager = DownloadManager.shared
     @State private var selectedVideo: VideoItem?
-    @State private var videoToDownload: VideoItem?
-    @State private var showDownloadAlert = false
-    @State private var showAlreadyDownloadedAlert = false
-    @State private var showCancelDownloadAlert = false
-    @State private var videoToCancel: VideoItem?
+    // urlPath of the folder being sized for download
+    @State private var scanningFolderPath: String?
+    // Edit mode shows download buttons on every tile
+    @State private var isEditing = false
+    @State private var folderPlan: FolderDownloadPlan?
+    @State private var folderScanError: String?
     var onBack: (() -> Void)? = nil
 
     private var displayTitle: String {
@@ -89,28 +90,33 @@ struct DirectoryBrowserView: View {
                             ], spacing: 16) {
                                 // Directories first
                                 ForEach(viewModel.directories) { directory in
-                                    Button(action: {
-                                        Task {
-                                            await viewModel.loadDirectory(directory.urlPath)
+                                    ZStack(alignment: .topTrailing) {
+                                        Button(action: {
+                                            Task {
+                                                await viewModel.loadDirectory(directory.urlPath)
+                                            }
+                                        }) {
+                                            DirectoryGridItem(directory: directory)
                                         }
-                                    }) {
-                                        DirectoryGridItem(directory: directory)
+                                        .buttonStyle(.plain)
+                                        .disabled(viewModel.isLoading)
+
+                                        if isEditing || scanningFolderPath == directory.urlPath {
+                                            DownloadButton(isBusy: scanningFolderPath == directory.urlPath) {
+                                                planFolderDownload(path: directory.urlPath, name: directory.name)
+                                            }
+                                            .padding(8)
+                                            .disabled(scanningFolderPath != nil)
+                                        }
                                     }
-                                    .buttonStyle(.plain)
-                                    .disabled(viewModel.isLoading)
                                 }
 
                                 // Videos
                                 ForEach(viewModel.videos) { video in
-                                    VideoGridItem(video: video, serverURL: serverURLManager.serverURL)
+                                    VideoGridItem(video: video, serverURL: serverURLManager.serverURL, isEditing: isEditing)
                                         .onTapGesture {
                                             if !viewModel.isLoading {
                                                 selectedVideo = video
-                                            }
-                                        }
-                                        .onLongPressGesture {
-                                            if !viewModel.isLoading {
-                                                handleVideoLongPress(video: video)
                                             }
                                         }
                                 }
@@ -183,6 +189,16 @@ struct DirectoryBrowserView: View {
                         }
                     }
                 }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // Filled while active
+                    Button(action: {
+                        isEditing.toggle()
+                    }) {
+                        Image(systemName: isEditing ? "arrow.down.circle.fill" : "arrow.down.circle")
+                    }
+                    .accessibilityLabel(isEditing ? "Done" : "Download")
+                }
             }
             .fullScreenCover(item: $selectedVideo, onDismiss: {
                 // Refresh to show updated watch progress
@@ -195,34 +211,32 @@ struct DirectoryBrowserView: View {
                 VideoPlayerView(video: video, serverURL: serverURLManager.serverURL)
                     .ignoresSafeArea()
             }
-            .alert("Download Video", isPresented: $showDownloadAlert, presenting: videoToDownload) { video in
-                Button("Cancel", role: .cancel) {
-                    videoToDownload = nil
-                }
-                Button("Download") {
-                    if let serverURL = serverURLManager.serverURL {
-                        downloadManager.addToDownloadQueue(video: video, serverURL: serverURL)
+            .alert(
+                folderPlan?.videos.isEmpty == true ? "Already Downloaded" : "Download Folder",
+                isPresented: Binding(
+                    get: { folderPlan != nil },
+                    set: { if !$0 { folderPlan = nil } }
+                ),
+                presenting: folderPlan
+            ) { plan in
+                if plan.videos.isEmpty {
+                    Button("OK", role: .cancel) { }
+                } else {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Download") {
+                        downloadManager.addToDownloadQueue(videos: plan.videos, serverURL: plan.serverURL)
                     }
-                    videoToDownload = nil
                 }
-            } message: { video in
-                Text("Download '\(video.name)'? The video will be available for offline viewing.")
+            } message: { plan in
+                Text(folderPlanMessage(plan))
             }
-            .alert("Already Downloaded", isPresented: $showAlreadyDownloadedAlert) {
+            .alert("Couldn't Read Folder", isPresented: Binding(
+                get: { folderScanError != nil },
+                set: { if !$0 { folderScanError = nil } }
+            )) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("This video has already been downloaded and is available in the Downloads tab.")
-            }
-            .alert("Cancel Download", isPresented: $showCancelDownloadAlert, presenting: videoToCancel) { video in
-                Button("Keep Downloading", role: .cancel) {
-                    videoToCancel = nil
-                }
-                Button("Cancel Download", role: .destructive) {
-                    downloadManager.cancelDownload(for: video.urlPath)
-                    videoToCancel = nil
-                }
-            } message: { video in
-                Text("Cancel download of '\(video.name)'?")
+                Text(folderScanError ?? "")
             }
             .onAppear {
             // Load root directory on first appearance
@@ -238,24 +252,35 @@ struct DirectoryBrowserView: View {
         }
     }
 
-    private func handleVideoLongPress(video: VideoItem) {
-        let downloadState = downloadManager.getDownloadState(for: video.urlPath)
+    /// Totals up everything under a folder, then asks before downloading it
+    private func planFolderDownload(path: String, name: String) {
+        guard let serverURL = serverURLManager.serverURL, scanningFolderPath == nil else { return }
 
-        switch downloadState {
-        case .none, .failed:
-            // Show download confirmation
-            videoToDownload = video
-            showDownloadAlert = true
-
-        case .alreadyDownloaded, .completed:
-            // Show "already downloaded" alert
-            showAlreadyDownloadedAlert = true
-
-        case .queued, .downloading:
-            // Show cancel download option
-            videoToCancel = video
-            showCancelDownloadAlert = true
+        scanningFolderPath = path
+        Task {
+            do {
+                folderPlan = try await FolderDownloadPlanner().plan(serverURL: serverURL, path: path, folderName: name)
+            } catch {
+                folderScanError = error.localizedDescription
+            }
+            scanningFolderPath = nil
         }
+    }
+
+    private func folderPlanMessage(_ plan: FolderDownloadPlan) -> String {
+        guard !plan.videos.isEmpty else {
+            return "Everything in '\(plan.folderName)' is already downloaded or queued."
+        }
+
+        let count = plan.videos.count
+        var message = "Are you sure you want to download \(plan.totalSize.formattedByteCount)? "
+            + "'\(plan.folderName)' has \(count) \(count == 1 ? "video" : "videos") that \(count == 1 ? "isn't" : "aren't") downloaded yet."
+
+        if plan.exceedsAvailableCapacity, let available = plan.availableCapacity {
+            message += "\n\nOnly \(available.formattedByteCount) of storage is available on this device."
+        }
+
+        return message
     }
 }
 
@@ -288,8 +313,10 @@ struct DirectoryGridItem: View {
 struct VideoGridItem: View {
     let video: VideoItem
     let serverURL: URL?
-    @StateObject private var downloadManager = DownloadManager.shared
+    var isEditing = false
+    @ObservedObject private var downloadManager = DownloadManager.shared
     @State private var showErrorAlert = false
+    @State private var showCancelAlert = false
     @State private var errorMessage = ""
 
     private var thumbnailURL: URL? {
@@ -343,33 +370,39 @@ struct VideoGridItem: View {
                     }
                 }
 
-                    // Download status badge
-                    DownloadStatusBadge(state: downloadState)
+                    // Download button (in edit mode), or the status of an existing download
+                    if downloadState == .none {
+                        if isEditing {
+                            DownloadButton {
+                                if let serverURL = serverURL {
+                                    downloadManager.addToDownloadQueue(video: video, serverURL: serverURL)
+                                }
+                            }
+                            .padding(8)
+                        }
+                    } else {
+                        DownloadStatusBadge(
+                            state: downloadState,
+                            queuePosition: downloadManager.queuePosition(for: video.urlPath)
+                        )
                         .padding(8)
                         .onTapGesture {
-                            if case .failed(let error) = downloadState {
+                            switch downloadState {
+                            case .failed(let error):
                                 errorMessage = error
                                 showErrorAlert = true
+                            case .queued, .downloading:
+                                showCancelAlert = true
+                            default:
+                                break
                             }
                         }
+                    }
                 }
 
                 // Watch progress bar
                 if video.watchPercentage > 0 {
-                    GeometryReader { geometry in
-                        HStack(spacing: 0) {
-                            Rectangle()
-                                .fill(Color.red)
-                                .frame(width: geometry.size.width * (video.watchPercentage / 100))
-
-                            Spacer(minLength: 0)
-                        }
-                    }
-                    .frame(height: 4)
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(2)
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 4)
+                    WatchProgressBar(percentage: video.watchPercentage)
                 }
             }
 
@@ -394,6 +427,14 @@ struct VideoGridItem: View {
             }
         } message: {
             Text(errorMessage)
+        }
+        .alert("Cancel Download", isPresented: $showCancelAlert) {
+            Button("Keep Downloading", role: .cancel) { }
+            Button("Cancel Download", role: .destructive) {
+                downloadManager.cancelDownload(for: video.urlPath)
+            }
+        } message: {
+            Text("Cancel download of '\(video.name)'?")
         }
     }
 }

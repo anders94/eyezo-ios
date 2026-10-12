@@ -7,10 +7,6 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     let serverURL: URL?
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
-        // Configure audio session
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try? AVAudioSession.sharedInstance().setActive(true)
-
         let controller = AVPlayerViewController()
 
         guard let serverURL = serverURL else { return controller }

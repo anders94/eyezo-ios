@@ -1,6 +1,17 @@
 import SwiftUI
+import AVFoundation
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Configure the audio session once, before anything activates it.
+        // AVPlayer activates it itself when playback starts.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         handleEventsForBackgroundURLSession identifier: String,
@@ -15,7 +26,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct EyeZoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var networkMonitor = NetworkMonitor.shared
-    @Environment(\.scenePhase) private var scenePhase
 
     private enum Tab {
         case browse
@@ -47,13 +57,6 @@ struct EyeZoApp: App {
                 hasPickedInitialTab = true
                 if !isConnected {
                     selectedTab = .downloads
-                }
-            }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active, networkMonitor.isConnected == true {
-                    Task {
-                        await WatchProgressSyncService.shared.syncIfNeeded()
-                    }
                 }
             }
         }

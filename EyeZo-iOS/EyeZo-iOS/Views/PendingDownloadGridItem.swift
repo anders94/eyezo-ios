@@ -17,15 +17,7 @@ struct PendingDownloadGridItem: View {
                 CachedAsyncImage(url: thumbnailURL) { image in
                     ThumbnailImage(image: image)
                 } placeholder: {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.gray.opacity(0.2))
-                            .aspectRatio(16/9, contentMode: .fit)
-
-                        Image(systemName: "film.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray.opacity(0.4))
-                    }
+                    ThumbnailPlaceholder()
                 }
                 .opacity(0.6)
 

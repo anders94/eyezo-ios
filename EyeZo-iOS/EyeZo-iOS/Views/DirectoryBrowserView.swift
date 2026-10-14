@@ -339,35 +339,15 @@ struct VideoGridItem: View {
                     CachedAsyncImageWithPhase(url: thumbnailURL) { phase in
                         switch phase {
                         case .empty:
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                                .aspectRatio(16/9, contentMode: .fit)
-                                .background(Color.gray.opacity(0.2))
-                                .cornerRadius(12)
+                            ThumbnailPlaceholder(isLoading: true)
                         case .success(let image):
                             ThumbnailImage(image: image)
                         case .failure:
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.gray.opacity(0.2))
-                                    .aspectRatio(16/9, contentMode: .fit)
-
-                                Image(systemName: "film.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.gray)
-                            }
+                            ThumbnailPlaceholder()
                         }
                     }
                 } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.gray.opacity(0.2))
-                            .aspectRatio(16/9, contentMode: .fit)
-
-                        Image(systemName: "film.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray)
-                    }
+                    ThumbnailPlaceholder()
                 }
 
                     // Download button (in edit mode), or the status of an existing download

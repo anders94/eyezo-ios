@@ -4,10 +4,12 @@ import SwiftUI
 actor ImageCache {
     static let shared = ImageCache()
 
-    private var cache: NSCache<NSURL, UIImage> = {
+    // NSCache is thread-safe, which lets views check it synchronously
+    // (see cachedImage(for:)) without hopping onto the actor
+    private nonisolated(unsafe) let cache: NSCache<NSURL, UIImage> = {
         let cache = NSCache<NSURL, UIImage>()
-        cache.countLimit = 100 // Store up to 100 images
-        cache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
+        cache.countLimit = 500
+        cache.totalCostLimit = 100 * 1024 * 1024 // 100 MB of decoded pixels
         return cache
     }()
 
@@ -15,6 +17,13 @@ actor ImageCache {
 
     private init() {}
 
+    /// An already-loaded image, available immediately so a tile that scrolls
+    /// back into view can draw it on its first frame
+    nonisolated func cachedImage(for url: URL) -> UIImage? {
+        cache.object(forKey: url as NSURL)
+    }
+
+    /// Loads an image from a server or a local file URL
     func image(for url: URL) async -> UIImage? {
         // Check if image is already cached
         if let cached = cache.object(forKey: url as NSURL) {
@@ -26,40 +35,39 @@ actor ImageCache {
             return await pendingTask.value
         }
 
-        // Create a new download task
-        let task = Task<UIImage?, Never> {
-            do {
-                let (data, response) = try await URLSession.shared.data(from: url)
+        // Fetch and decode off the actor so loads run in parallel
+        let task = Task.detached(priority: .userInitiated) { () -> UIImage? in
+            guard let data = await Self.loadData(from: url),
+                  let image = UIImage(data: data) else { return nil }
 
-                // Validate response
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200,
-                      let image = UIImage(data: data) else {
-                    removePendingRequest(for: url)
-                    return nil
-                }
-
-                // Cache the image
-                cacheImage(image, for: url)
-                removePendingRequest(for: url)
-
-                return image
-            } catch {
-                removePendingRequest(for: url)
-                return nil
-            }
+            // Decode now, in the background, instead of on the main thread at first draw
+            return await image.byPreparingForDisplay() ?? image
         }
 
         pendingRequests[url] = task
-        return await task.value
-    }
-
-    private func cacheImage(_ image: UIImage, for url: URL) {
-        cache.setObject(image, forKey: url as NSURL)
-    }
-
-    private func removePendingRequest(for url: URL) {
+        let image = await task.value
         pendingRequests[url] = nil
+
+        if let image = image {
+            cache.setObject(image, forKey: url as NSURL, cost: Self.decodedSize(of: image))
+        }
+        return image
+    }
+
+    private static func loadData(from url: URL) async -> Data? {
+        if url.isFileURL {
+            return try? Data(contentsOf: url)
+        }
+
+        guard let (data, response) = try? await URLSession.shared.data(from: url),
+              let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else { return nil }
+        return data
+    }
+
+    private static func decodedSize(of image: UIImage) -> Int {
+        guard let cgImage = image.cgImage else { return 0 }
+        return cgImage.bytesPerRow * cgImage.height
     }
 
     func clearCache() {

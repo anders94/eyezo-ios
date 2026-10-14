@@ -8,19 +8,11 @@ struct DownloadedVideoGridItem: View {
         VStack(spacing: 8) {
             // Thumbnail with watch progress bar
             ZStack(alignment: .bottom) {
-                if let thumbnailURL = video.thumbnailURL,
-                   let image = UIImage(contentsOfFile: thumbnailURL.path) {
-                    ThumbnailImage(image: Image(uiImage: image))
-                } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.gray.opacity(0.2))
-                            .aspectRatio(16/9, contentMode: .fit)
-
-                        Image(systemName: "film.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray)
-                    }
+                // Loaded through the cache so scrolling doesn't re-read files from disk
+                CachedAsyncImage(url: video.thumbnailURL) { image in
+                    ThumbnailImage(image: image)
+                } placeholder: {
+                    ThumbnailPlaceholder()
                 }
 
                 // Watch progress bar

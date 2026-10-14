@@ -6,7 +6,14 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let placeholder: () -> Placeholder
 
     @State private var loadedImage: UIImage?
-    @State private var isLoading = false
+
+    init(url: URL?, @ViewBuilder content: @escaping (Image) -> Content, @ViewBuilder placeholder: @escaping () -> Placeholder) {
+        self.url = url
+        self.content = content
+        self.placeholder = placeholder
+        // Start with a cached image if there is one, so it's drawn on the first frame
+        _loadedImage = State(initialValue: url.flatMap { ImageCache.shared.cachedImage(for: $0) })
+    }
 
     var body: some View {
         Group {
@@ -18,10 +25,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         .task(id: url) {
             guard let url = url else { return }
-
-            isLoading = true
             loadedImage = await ImageCache.shared.image(for: url)
-            isLoading = false
         }
     }
 }
@@ -29,9 +33,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 // Convenience initializer matching AsyncImage API
 extension CachedAsyncImage where Content == Image, Placeholder == Color {
     init(url: URL?) {
-        self.url = url
-        self.content = { $0.resizable() }
-        self.placeholder = { Color.gray.opacity(0.2) }
+        self.init(url: url, content: { $0.resizable() }, placeholder: { Color.gray.opacity(0.2) })
     }
 }
 
@@ -48,11 +50,17 @@ struct CachedAsyncImagePhase {
 
 struct CachedAsyncImageWithPhase<Content: View>: View {
     let url: URL?
-    @ViewBuilder let content: (CachedAsyncImagePhase.LoadingPhase) -> Content
+    let content: (CachedAsyncImagePhase.LoadingPhase) -> Content
 
     @State private var loadedImage: UIImage?
-    @State private var isLoading = true
     @State private var hasFailed = false
+
+    init(url: URL?, @ViewBuilder content: @escaping (CachedAsyncImagePhase.LoadingPhase) -> Content) {
+        self.url = url
+        self.content = content
+        // Start with a cached image if there is one, so it's drawn on the first frame
+        _loadedImage = State(initialValue: url.flatMap { ImageCache.shared.cachedImage(for: $0) })
+    }
 
     var body: some View {
         Group {
@@ -60,26 +68,22 @@ struct CachedAsyncImageWithPhase<Content: View>: View {
                 content(.success(Image(uiImage: loadedImage)))
             } else if hasFailed {
                 content(.failure)
-            } else if isLoading {
+            } else {
                 content(.empty)
             }
         }
         .task(id: url) {
             guard let url = url else {
                 hasFailed = true
-                isLoading = false
                 return
             }
 
-            isLoading = true
             hasFailed = false
 
             if let image = await ImageCache.shared.image(for: url) {
                 loadedImage = image
-                isLoading = false
             } else {
                 hasFailed = true
-                isLoading = false
             }
         }
     }

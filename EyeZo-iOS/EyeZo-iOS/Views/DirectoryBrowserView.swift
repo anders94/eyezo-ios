@@ -124,7 +124,7 @@ struct DirectoryBrowserView: View {
                             .padding()
 
                             // Empty state
-                            if viewModel.directories.isEmpty && viewModel.videos.isEmpty && !viewModel.isLoading {
+                            if viewModel.hasLoadedContent && viewModel.directories.isEmpty && viewModel.videos.isEmpty && !viewModel.isLoading {
                                 VStack(spacing: 16) {
                                     Image(systemName: "folder")
                                         .font(.system(size: 50))
@@ -153,7 +153,9 @@ struct DirectoryBrowserView: View {
             }
 
             // Initial loading overlay - shown when no data loaded yet
-            if viewModel.isLoading && viewModel.directories.isEmpty && viewModel.videos.isEmpty && viewModel.errorMessage == nil {
+            // Also covers the moment before the first request starts
+            if (viewModel.isLoading || !viewModel.hasLoadedContent)
+                && viewModel.directories.isEmpty && viewModel.videos.isEmpty && viewModel.errorMessage == nil {
                 Color(UIColor.systemBackground)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .allowsHitTesting(false)

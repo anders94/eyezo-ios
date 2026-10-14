@@ -11,6 +11,9 @@ class DirectoryViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var serverUnreachable = false
     @Published var hasAttemptedInitialLoad = false
+    // True once the server has answered, so an empty folder can be told
+    // apart from one that simply hasn't loaded yet
+    @Published private(set) var hasLoadedContent = false
 
     private let apiService = APIService()
     private let serverURLManager = ServerURLManager.shared
@@ -39,6 +42,7 @@ class DirectoryViewModel: ObservableObject {
             directories = response.directories.filter { !$0.name.hasPrefix(".") }
             videos = response.videos.filter { !$0.name.hasPrefix(".") }
 
+            hasLoadedContent = true
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription

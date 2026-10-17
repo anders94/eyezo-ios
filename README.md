@@ -2,6 +2,8 @@
 
 A lightweight iOS app for browsing and playing videos from [eyezo-server](https://github.com/anders94/eyezo-server).
 
+<a href="https://apps.apple.com/us/app/eyezo/id6772774185"><img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us" alt="Download on the App Store" height="50"></a>
+
 ## Features
 
 - Native SwiftUI interface for iOS 15+ (iPhone & iPad)
